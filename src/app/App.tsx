@@ -1556,10 +1556,10 @@ export default function App() {
             <span className="font-mono text-[10px] text-primary tracking-[0.25em] uppercase">{content.heroBadge}</span>
           </div>
           <h1 className="font-black uppercase leading-[0.85] mb-6 md:mb-8" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "clamp(2.8rem, 13vw, 10.5rem)" }}>
-            <span className="block text-foreground">{content.heroLine1}</span>
-            <span className="block text-primary">{content.heroLine2}</span>
-            <span className="block text-foreground">{content.heroLine3}</span>
-            <span className="block" style={{ WebkitTextStroke: "clamp(1px, 0.2vw, 2px) rgba(237,233,226,0.55)", color: "transparent" }}>{content.heroLine4}</span>
+            <span className="block text-foreground text-[96px] text-left">{content.heroLine1}</span>
+            <span className="block text-primary text-[96px] text-left">{content.heroLine2}</span>
+            <span className="block text-foreground text-[96px] text-left">{content.heroLine3}</span>
+            <span className="block text-[128px] text-justify" style={{ WebkitTextStroke: "clamp(1px, 0.2vw, 2px) rgba(237,233,226,0.55)", color: "transparent" }}>{content.heroLine4}</span>
           </h1>
           <p className="text-muted-foreground font-light text-sm md:text-lg max-w-md md:max-w-xl mx-auto mb-8 md:mb-10 leading-relaxed">{content.heroSubtitle}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center px-4 sm:px-0">
