@@ -30,9 +30,23 @@
     "muted": "#1A1E2B",
     "border": "rgba(237,233,226,0.08)"
   },
-  "projects": [],
-  "pinned": ["seed-pizza"],
+  "projects": [
+    {
+      "id": "proj-1785530896533",
+      "title": "Alienado UsBR",
+      "description": "",
+      "category": "Motion Design",
+      "mediaType": "video",
+      "mediaUrl": "/uploads/videos/1785530884538-Capa_Animada_LR.mp4",
+      "thumbUrl": "/uploads/images/1785530892997-Capa_Alienado_Oficial.jpg",
+      "createdAt": 1785530896533
+    }
+  ],
+  "pinned": [
+    "seed-pizza",
+    "proj-1785530896533"
+  ],
   "hiddenSeeds": [],
   "audio": null,
-  "updatedAt": "2026-07-31T00:00:00.000Z"
+  "updatedAt": "2026-07-31T20:48:17.462Z"
 }
