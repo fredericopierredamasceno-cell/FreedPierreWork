@@ -23,35 +23,16 @@
     "footerCopy": "© 2026 Frederico Pierre · Design · Motion Designer · Video Maker · Audiovisual"
   },
   "theme": {
-    "primary": "#c91c24",
+    "primary": "#E8863A",
     "background": "#07080F",
     "foreground": "#EDE9E2",
     "card": "#0F111A",
     "muted": "#1A1E2B",
     "border": "rgba(237,233,226,0.08)"
   },
-  "projects": [
-    {
-      "id": "proj-1785943079552",
-      "title": "Propaganda Extra FM",
-      "description": "",
-      "category": "Motion Design",
-      "mediaType": "embed",
-      "mediaUrl": "https://www.youtube.com/embed/3tAAzTHiDc0",
-      "thumbUrl": "https://img.youtube.com/vi/3tAAzTHiDc0/hqdefault.jpg",
-      "embedPlatform": "youtube",
-      "embedId": "3tAAzTHiDc0",
-      "createdAt": 1785943079552
-    }
-  ],
-  "pinned": [
-    "proj-1785943079552",
-    "seed-pizza"
-  ],
+  "projects": [],
+  "pinned": [],
   "hiddenSeeds": [],
-  "audio": {
-    "name": "Me And My Crew Mix Estudo.mp3",
-    "url": "/uploads/audio/1785945454852-Me_And_My_Crew_Mix_Estudo.mp3"
-  },
-  "updatedAt": "2026-08-05T16:24:24.753Z"
+  "audio": null,
+  "updatedAt": "2026-07-31T00:00:00.000Z"
 }
