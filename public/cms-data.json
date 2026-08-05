@@ -33,6 +33,13 @@
   "projects": [],
   "audios": [
     {
+      "id": "audio-1785972374318",
+      "title": "Me and My Crew - Mix",
+      "artist": "Desconhecido",
+      "url": "/uploads/audio/1785972369274-Me_And_My_Crew_Mix_Estudo.mp3",
+      "createdAt": 1785972374318
+    },
+    {
       "id": "audio-1785972295343",
       "title": "Nice Bass",
       "artist": "Freed Pierre",
@@ -43,5 +50,5 @@
   ],
   "pinned": [],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-05T23:24:55.816Z"
+  "updatedAt": "2026-08-05T23:26:14.817Z"
 }
