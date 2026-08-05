@@ -58,6 +58,14 @@
   ],
   "audios": [
     {
+      "id": "audio-1785968342796",
+      "title": "Nice Bass",
+      "artist": "Freed Pierre",
+      "url": "/uploads/audio/1785968335715-Nice_Bass.mp3",
+      "coverUrl": "/uploads/images/1785968340457-Foto_IA.jpg",
+      "createdAt": 1785968342796
+    },
+    {
       "id": "migrated-audio",
       "title": "Me And My Crew Mix Estudo",
       "url": "/uploads/audio/1785967609930-Me_And_My_Crew_Mix_Estudo.mp3",
@@ -69,5 +77,5 @@
     "seed-pizza"
   ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-05T22:16:02.850Z"
+  "updatedAt": "2026-08-05T22:19:03.383Z"
 }
