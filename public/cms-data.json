@@ -1,26 +1,26 @@
 {
   "content": {
-    "heroLine1": "ONDE ÁUDIO,",
+    "heroLine1": "ONDE ÃUDIO,",
     "heroLine2": "DESIGN",
     "heroLine3": "E MOVIMENTOS",
     "heroLine4": "SE ENCONTRAM",
-    "heroBadge": "Disponível para projetos",
-    "heroSubtitle": "Um profissional. Quatro linguagens. Design, motion, vídeo e produção fonográfica para marcas, artistas e conteúdo digital.",
+    "heroBadge": "DisponÃ­vel para projetos",
+    "heroSubtitle": "Um profissional. Quatro linguagens. Design, motion, vÃ­deo e produÃ§Ã£o fonogrÃ¡fica para marcas, artistas e conteÃºdo digital.",
     "stat1Val": "10+",
-    "stat1Label": "Anos de experiência",
+    "stat1Label": "Anos de experiÃªncia",
     "stat2Val": "4",
-    "stat2Label": "Áreas de atuação",
+    "stat2Label": "Ãreas de atuaÃ§Ã£o",
     "stat3Val": "Multi",
     "stat3Label": "Perfil criativo",
     "stat4Val": "ECAD",
     "stat4Label": "Cadastrado",
     "difHeading1": "Menos",
-    "difHeading2": "intermediários.",
+    "difHeading2": "intermediÃ¡rios.",
     "difHeading3": "Mais resultado.",
-    "difSubtext": "Com mais de 10 anos de experiência em design gráfico, motion design, edição de vídeo e produção musical, ofereço uma solução criativa completa sem dividir o projeto entre múltiplos profissionais.",
+    "difSubtext": "Com mais de 10 anos de experiÃªncia em design grÃ¡fico, motion design, ediÃ§Ã£o de vÃ­deo e produÃ§Ã£o musical, ofereÃ§o uma soluÃ§Ã£o criativa completa sem dividir o projeto entre mÃºltiplos profissionais.",
     "contactHeading": "Bora criar algo?",
-    "contactSubtext": "Tem um projeto de design, vídeo, motion ou música? Me manda uma mensagem. Respondo pelo WhatsApp ou e-mail — sem enrolação.",
-    "footerCopy": "© 2026 Frederico Pierre · Design · Motion Designer · Video Maker · Audiovisual"
+    "contactSubtext": "Tem um projeto de design, vÃ­deo, motion ou mÃºsica? Me manda uma mensagem. Respondo pelo WhatsApp ou e-mail â sem enrolaÃ§Ã£o.",
+    "footerCopy": "Â© 2026 Frederico Pierre Â· Design Â· Motion Designer Â· Video Maker Â· Audiovisual"
   },
   "theme": {
     "primary": "#E8863A",
@@ -30,9 +30,26 @@
     "muted": "#1A1E2B",
     "border": "rgba(237,233,226,0.08)"
   },
-  "projects": [],
-  "pinned": ["seed-pizza"],
+  "projects": [
+    {
+      "id": "proj-1785903775906",
+      "title": "ExtraFM",
+      "description": "",
+      "category": "Motion Design",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/3tAAzTHiDc0",
+      "thumbUrl": "https://img.youtube.com/vi/3tAAzTHiDc0/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "3tAAzTHiDc0",
+      "createdAt": 1785903775906
+    }
+  ],
+  "pinned": [
+    "seed-pizza",
+    "seed-alienado",
+    "proj-1785903775906"
+  ],
   "hiddenSeeds": [],
   "audio": null,
-  "updatedAt": "2026-07-31T00:00:00.000Z"
+  "updatedAt": "2026-08-05T04:22:56.509Z"
 }
