@@ -30,9 +30,24 @@
     "muted": "#1A1E2B",
     "border": "rgba(237,233,226,0.08)"
   },
-  "projects": [],
-  "pinned": [],
+  "projects": [
+    {
+      "id": "proj-1785943079552",
+      "title": "Propagando Extra FM",
+      "description": "",
+      "category": "Motion Design",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/3tAAzTHiDc0",
+      "thumbUrl": "https://img.youtube.com/vi/3tAAzTHiDc0/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "3tAAzTHiDc0",
+      "createdAt": 1785943079552
+    }
+  ],
+  "pinned": [
+    "proj-1785943079552"
+  ],
   "hiddenSeeds": [],
   "audio": null,
-  "updatedAt": "2026-08-05T15:16:39.339Z"
+  "updatedAt": "2026-08-05T15:18:00.305Z"
 }
