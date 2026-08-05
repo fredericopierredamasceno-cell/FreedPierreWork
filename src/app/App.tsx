@@ -7,7 +7,8 @@ import {
   Sparkles, Settings, FileText, Paintbrush, FolderOpen, Info,
   Pin, PinOff, Github, RefreshCw, AlertCircle, CheckCircle2, Loader2,
   Youtube, Link2, ScrollText, Zap, Clock, CheckCheck, XCircle, WifiOff,
-  Library, Volume2, VolumeX, SkipBack, SkipForward, Search, Filter,
+  Library, Volume2, VolumeX, Search, ChevronLeft, ChevronRight,
+  ZoomIn,
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import heroVideo from "../imports/Portf_lio_Video_Final_Ver.mp4";
@@ -15,16 +16,22 @@ import pizzaVideo from "../imports/Lan_amento_Pizza_Ifood.mp4";
 import logoImg from "../imports/Logo_Freed_Pierre.png";
 
 /* ═══════════════════════════════════════════════════════════════════
-   GITHUB CMS — fonte da verdade
-   cms-data.json: banco de dados
-   public/uploads/: mídias
-   localStorage: owner/repo/branch  |  sessionStorage: token (seguro)
+   ARQUITETURA CMS — SEPARAÇÃO CÓDIGO / CONTEÚDO
+   ─────────────────────────────────────────────────────────────────
+   • cms/data.json  ← conteúdo admin (GitHub, fora do /public)
+     Figma Make NUNCA toca este arquivo pois não é gerenciado por ele.
+     Commits do Figma afetam apenas src/ e arquivos de config.
+   • public/cms-data.json  ← fallback offline (defaults apenas)
+   • public/uploads/       ← mídias (Figma nunca deleta uploads)
+   • localStorage  : owner/repo/branch
+   • sessionStorage: token (apaga ao fechar o browser)
 ═══════════════════════════════════════════════════════════════════ */
 
-const CMS_FILE = "public/cms-data.json";
+// Arquivo de dados do CMS fora de public/ — imune a commits do Figma Make
+const CMS_FILE = "cms/data.json";
 const GH_CFG_KEY = "fp_gh_cfg";
 const GH_TOKEN_KEY = "fp_gh_tok";
-const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB — GitHub API limit
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
 interface GitHubConfig { owner: string; repo: string; branch: string; token: string; }
 
@@ -63,7 +70,6 @@ async function ghGetSHA(cfg: GitHubConfig, path: string): Promise<string | undef
   return undefined;
 }
 
-/* Non-blocking FileReader — avoids freezing the main thread on large files */
 async function fileToBase64(file: File, onProgress: (p: UploadProgress) => void): Promise<string> {
   return new Promise((resolve, reject) => {
     onProgress({ phase: "preparing", percent: 5, bytesSent: 0, bytesTotal: file.size, speed: 0, eta: 0 });
@@ -193,6 +199,7 @@ interface PublishStep { id: string; label: string; status: "pending" | "running"
 interface CMSProject {
   id: string; title: string; description: string; category: string;
   mediaType: "image" | "video" | "embed"; mediaUrl: string; thumbUrl?: string;
+  images?: string[]; // múltiplas imagens para carrossel (Design)
   embedPlatform?: "youtube" | "vimeo"; embedId?: string;
   isFixed?: boolean; createdAt: number;
 }
@@ -203,10 +210,23 @@ interface CMSAudio {
   url: string; coverUrl?: string; createdAt: number;
 }
 
+interface CMSServiceContent {
+  title: string; description: string; tags: string[];
+}
+
+interface CMSAdvantageContent {
+  title: string; body: string;
+}
+
 interface CMSData {
-  content: SiteContent; theme: SiteTheme;
-  projects: CMSProject[]; audios: CMSAudio[];
-  pinned: string[]; hiddenSeeds: string[];
+  content: SiteContent;
+  theme: SiteTheme;
+  services: CMSServiceContent[];
+  advantages: CMSAdvantageContent[];
+  projects: CMSProject[];
+  audios: CMSAudio[];
+  pinned: string[];
+  hiddenSeeds: string[];
   updatedAt: string;
 }
 
@@ -215,14 +235,21 @@ interface CMSData {
 ═══════════════════════════════════════════════════════════════════ */
 
 const CONTENT_DEFAULTS = {
-  heroLine1: "ONDE ÁUDIO,", heroLine2: "DESIGN", heroLine3: "E MOVIMENTOS", heroLine4: "SE ENCONTRAM",
+  heroLine1: "ONDE ÁUDIO,",
+  heroLine2: "DESIGN",
+  heroLine3: "E MOVIMENTOS",
+  heroLine4: "SE ENCONTRAM",
   heroBadge: "Disponível para projetos",
   heroSubtitle: "Um profissional. Quatro linguagens. Design, motion, vídeo e produção fonográfica para marcas, artistas e conteúdo digital.",
   stat1Val: "10+", stat1Label: "Anos de experiência",
-  stat2Val: "4", stat2Label: "Áreas de atuação",
+  stat2Val: "4",   stat2Label: "Áreas de atuação",
   stat3Val: "Multi", stat3Label: "Perfil criativo",
   stat4Val: "ECAD", stat4Label: "Cadastrado",
-  difHeading1: "Menos", difHeading2: "intermediários.", difHeading3: "Mais resultado.",
+  servicesHeading1: "O que posso",
+  servicesHeading2: "fazer por você?",
+  difHeading1: "Menos",
+  difHeading2: "intermediários.",
+  difHeading3: "Mais resultado.",
   difSubtext: "Com mais de 10 anos de experiência em design gráfico, motion design, edição de vídeo e produção musical, ofereço uma solução criativa completa sem dividir o projeto entre múltiplos profissionais.",
   contactHeading: "Bora criar algo?",
   contactSubtext: "Tem um projeto de design, vídeo, motion ou música? Me manda uma mensagem. Respondo pelo WhatsApp ou e-mail — sem enrolação.",
@@ -236,7 +263,36 @@ const THEME_DEFAULTS = {
 };
 type SiteTheme = typeof THEME_DEFAULTS;
 
-/* Detect content corrupted by old atob-only decoding (latin-1 misread of UTF-8) */
+const DEFAULT_SERVICES: CMSServiceContent[] = [
+  {
+    title: "Design Gráfico",
+    description: "Identidade visual para singles musicais, lançamentos digitais, artes para redes sociais, capas de álbum, materiais institucionais e peças impressas.",
+    tags: ["Photoshop", "Illustrator", "Identidade Visual", "Mídias Sociais", "Canva"],
+  },
+  {
+    title: "Video Making",
+    description: "Vídeos para redes sociais, videoclipes, lyric videos, vídeos institucionais e conteúdo audiovisual. Edição e storytelling visual.",
+    tags: ["Premiere Pro", "Edição de Vídeo", "Lyric Video", "Reels", "Institucional"],
+  },
+  {
+    title: "Motion Design",
+    description: "Animações, vinhetas, motion graphics e edição de vídeo integrada. Cada frame pensado para gerar impacto e engajamento em poucos segundos.",
+    tags: ["After Effects", "Motion Graphics", "Animação", "Vinhetas", "Reels"],
+  },
+  {
+    title: "Produção Fonográfica",
+    description: "Gravação, produção, edição, mixagem e masterização em estúdio. Cadastrado no ECAD. Entrega pronta para streaming.",
+    tags: ["FL Studio", "Reaper", "Mixagem", "Masterização", "Streaming", "ECAD"],
+  },
+];
+
+const DEFAULT_ADVANTAGES: CMSAdvantageContent[] = [
+  { title: "Um profissional, quatro frentes", body: "Design, motion, vídeo e áudio sob o mesmo teto — sem intermediários, sem ruído de comunicação." },
+  { title: "Entrega com mais agilidade", body: "Menos dependência de terceiros significa prazos menores e maior controle criativo do início ao fim." },
+  { title: "Linguagem visual + sonora integrada", body: "Quem entende de áudio entende de ritmo — e isso se reflete na edição, no corte e na identidade visual." },
+  { title: "10+ anos de experiência", body: "Trajetória em agências, gráficas, estúdios e mercado independente. Da teoria à prática em projetos reais." },
+];
+
 function isCorrupted(obj: Record<string, string>): boolean {
   return Object.values(obj).some(v => typeof v === "string" && /Ã|Â[ª-¿]|â€/.test(v));
 }
@@ -245,14 +301,15 @@ function makeCMSData(overrides: Partial<CMSData & { audio?: { name: string; url:
   const safeContent = overrides.content && !isCorrupted(overrides.content)
     ? { ...CONTENT_DEFAULTS, ...overrides.content }
     : { ...CONTENT_DEFAULTS };
-  // Migrate old single audio field to audios array
   let audios = overrides.audios ?? [];
   if (!audios.length && overrides.audio) {
-    audios = [{ id: "migrated-audio", title: overrides.audio.name.replace(/\.[^.]+$/, ""), url: overrides.audio.url, createdAt: 0 }];
+    audios = [{ id: "migrated-audio", title: (overrides.audio as { name: string; url: string }).name.replace(/\.[^.]+$/, ""), url: (overrides.audio as { name: string; url: string }).url, createdAt: 0 }];
   }
   return {
     content: safeContent,
     theme: { ...THEME_DEFAULTS, ...(overrides.theme ?? {}) },
+    services: overrides.services?.length ? overrides.services : DEFAULT_SERVICES,
+    advantages: overrides.advantages?.length ? overrides.advantages : DEFAULT_ADVANTAGES,
     projects: overrides.projects ?? [],
     audios,
     pinned: overrides.pinned ?? [],
@@ -286,40 +343,35 @@ function useCMS() {
     Object.entries(cms.theme).forEach(([k, v]) => root.style.setProperty(`--${k}`, v));
   }, [cms.theme]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     addLog("info", "Carregando portfólio...");
     const cfg = loadGHConfig();
     if (cfg?.owner && cfg?.repo) {
-      addLog("info", `Sincronizando com GitHub (${cfg.owner}/${cfg.repo})...`);
+      addLog("info", `Sincronizando GitHub (${cfg.owner}/${cfg.repo}) — cms/data.json protegido de commits do Figma Make.`);
       ghFetchCMS(cfg).then(result => {
-        if (result) {
-          setCms(result.data); setLoading(false);
-          addLog("success", "CMS carregado do GitHub.");
-        } else {
-          addLog("warn", "GitHub indisponível — usando arquivo local.");
-          fetchLocal();
-        }
+        if (result) { setCms(result.data); setLoading(false); addLog("success", "CMS carregado do GitHub (cms/data.json)."); }
+        else { addLog("warn", "GitHub indisponível — usando arquivo local."); fetchLocal(); }
       }).catch(() => fetchLocal());
     } else { fetchLocal(); }
 
     function fetchLocal() {
       fetch(`/cms-data.json?t=${Date.now()}`)
         .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-        .then((d) => { setCms(makeCMSData(d)); setLoading(false); addLog("success", "cms-data.json local carregado."); })
-        .catch(() => { setLoading(false); addLog("warn", "Usando padrões (sem cms-data.json)."); });
+        .then(d => { setCms(makeCMSData(d)); setLoading(false); addLog("success", "Fallback local carregado (somente defaults)."); })
+        .catch(() => { setLoading(false); addLog("warn", "Usando padrões iniciais."); });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setGhConfig = useCallback((cfg: GitHubConfig) => { storeGHConfig(cfg); setGhConfigState(cfg); }, []);
 
   const doPublish = useCallback(async (data: CMSData): Promise<boolean> => {
-    if (!ghConfig) { toast.error("Configure o GitHub primeiro."); setSaveStatus("error"); return false; }
-    if (!ghConfig.token) { toast.error("Token não informado. Preencha na aba GitHub."); setSaveStatus("error"); return false; }
+    if (!ghConfig) { toast.error("Configure o GitHub primeiro."); return false; }
+    if (!ghConfig.token) { toast.error("Token não informado."); return false; }
     const STEPS: PublishStep[] = [
-      { id: "validate", label: "Validando arquivos...", status: "pending" },
+      { id: "validate", label: "Validando dados...", status: "pending" },
       { id: "sha", label: "Obtendo referência do repositório...", status: "pending" },
-      { id: "commit", label: "Commitando no GitHub...", status: "pending" },
+      { id: "commit", label: "Commitando cms/data.json...", status: "pending" },
       { id: "push", label: "Enviando alterações...", status: "pending" },
       { id: "vercel", label: "Vercel iniciando deploy...", status: "pending" },
       { id: "done", label: "Publicação concluída.", status: "pending" },
@@ -340,12 +392,12 @@ function useCMS() {
       addLog("error", `Commit falhou: ${result.error}`);
       return false;
     }
-    upd("commit", "done"); addLog("success", "Commit criado no GitHub.");
+    upd("commit", "done"); addLog("success", "Commit em cms/data.json (protegido de futuros deploys do Figma).");
     upd("push", "running"); await new Promise(r => setTimeout(r, 500)); upd("push", "done");
     upd("vercel", "running"); addLog("info", "Deploy iniciado na Vercel.");
     await new Promise(r => setTimeout(r, 1000)); upd("vercel", "done");
     upd("done", "running"); await new Promise(r => setTimeout(r, 200)); upd("done", "done");
-    addLog("success", "Publicação concluída — Vercel ativo em ~1-2 min.");
+    addLog("success", "Publicado — site ao vivo em ~1-2 min.");
     toast.success("Publicado! Vercel deploying em ~1-2 min.");
     setCms(payload); setSaveStatus("success");
     setTimeout(() => setSaveStatus("idle"), 8000);
@@ -361,7 +413,7 @@ function useCMS() {
     addLog("info", `Upload: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
     try {
       const url = await ghUploadBinary(ghConfig, folder, file, onProgress);
-      addLog("success", `Upload OK: ${file.name} → ${url}`);
+      addLog("success", `Upload OK → ${url}`);
       toast.success(`Upload concluído: ${file.name}`);
       return url;
     } catch (e: unknown) {
@@ -381,10 +433,10 @@ function useCMS() {
 
   const syncFromGitHub = useCallback(async (): Promise<boolean> => {
     if (!ghConfig?.owner || !ghConfig?.repo) { toast.warning("Configure o GitHub para sincronizar."); return false; }
-    addLog("info", "Sincronizando com GitHub...");
+    addLog("info", "Sincronizando...");
     const result = await ghFetchCMS(ghConfig);
     if (result) { setCms(result.data); addLog("success", "Sincronizado."); toast.success("Dados sincronizados do GitHub."); return true; }
-    toast.error("Falha ao sincronizar. Verifique as configurações."); return false;
+    toast.error("Falha ao sincronizar."); return false;
   }, [ghConfig, addLog]);
 
   return {
@@ -405,14 +457,15 @@ function fmtBytes(b: number) {
   return `${(b / 1024 / 1024).toFixed(2)} MB`;
 }
 function fmtSpeed(bps: number) {
-  if (bps < 1024) return `${bps.toFixed(0)} B/s`;
   if (bps < 1024 * 1024) return `${(bps / 1024).toFixed(1)} KB/s`;
   return `${(bps / 1024 / 1024).toFixed(2)} MB/s`;
 }
 function fmtETA(s: number) {
   if (!isFinite(s) || s <= 0) return "";
-  if (s < 60) return `~${Math.ceil(s)}s`;
-  return `~${Math.ceil(s / 60)}min`;
+  return s < 60 ? `~${Math.ceil(s)}s` : `~${Math.ceil(s / 60)}min`;
+}
+function fmtTime(s: number) {
+  return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 }
 
 const PHASE_LABELS: Record<UploadProgress["phase"], string> = {
@@ -454,26 +507,39 @@ const CATEGORY_COLORS: Record<string, string> = {
   "Produção Fonográfica": "#5BC49A",
 };
 
+const SERVICE_NUMBERS = ["01", "02", "03", "04"];
+const SERVICE_ICONS = [<Palette size={24} />, <Film size={24} />, <Sparkles size={24} />, <Mic size={24} />];
+const SERVICE_CATEGORIES = [["Design Gráfico"], ["Video Making"], ["Motion Design"], ["Produção Fonográfica"]];
+
 const AUDIO_ACCEPT = "audio/mpeg,audio/wav,audio/ogg,audio/aac,audio/mp4,audio/flac,audio/x-flac,.mp3,.wav,.ogg,.aac,.m4a,.flac";
-
-const SERVICES = [
-  { icon: <Palette size={24} />, number: "01", title: "Design Gráfico", description: "Identidade visual para singles musicais, lançamentos digitais, artes para redes sociais, capas de álbum, materiais institucionais e peças impressas.", tags: ["Photoshop", "Illustrator", "Identidade Visual", "Mídias Sociais", "Canva"], galleryCategories: ["Design Gráfico"] },
-  { icon: <Film size={24} />, number: "02", title: "Video Making", description: "Vídeos para redes sociais, videoclipes, lyric videos, vídeos institucionais e conteúdo audiovisual. Edição e storytelling visual.", tags: ["Premiere Pro", "Edição de Vídeo", "Lyric Video", "Reels", "Institucional"], galleryCategories: ["Video Making"] },
-  { icon: <Sparkles size={24} />, number: "03", title: "Motion Design", description: "Animações, vinhetas, motion graphics e edição de vídeo integrada. Cada frame pensado para gerar impacto e engajamento em poucos segundos.", tags: ["After Effects", "Motion Graphics", "Animação", "Vinhetas", "Reels"], galleryCategories: ["Motion Design"] },
-  { icon: <Mic size={24} />, number: "04", title: "Produção Fonográfica", description: "Gravação, produção, edição, mixagem e masterização em estúdio. Cadastrado no ECAD. Entrega pronta para streaming.", tags: ["FL Studio", "Reaper", "Mixagem", "Masterização", "Streaming", "ECAD"], galleryCategories: ["Produção Fonográfica"] },
-];
-
-const ADVANTAGES = [
-  { num: "01", title: "Um profissional, quatro frentes", body: "Design, motion, vídeo e áudio sob o mesmo teto — sem intermediários, sem ruído de comunicação." },
-  { num: "02", title: "Entrega com mais agilidade", body: "Menos dependência de terceiros significa prazos menores e maior controle criativo do início ao fim." },
-  { num: "03", title: "Linguagem visual + sonora integrada", body: "Quem entende de áudio entende de ritmo — e isso se reflete na edição, no corte e na identidade visual." },
-  { num: "04", title: "10+ anos de experiência", body: "Trajetória em agências, gráficas, estúdios e mercado independente. Da teoria à prática em projetos reais." },
-];
 
 const CONTACT_LINKS = [
   { icon: <MessageCircle size={18} />, label: "WhatsApp", value: "(31) 97579-1151", href: "https://wa.me/5531975791151" },
   { icon: <Mail size={18} />, label: "E-mail", value: "fredericopierredamasceno@gmail.com", href: "mailto:fredericopierredamasceno@gmail.com" },
 ];
+
+/* ═══════════════════════════════════════════════════════════════════
+   TAP DETECTION — distingue tap intencional de scroll/drag
+═══════════════════════════════════════════════════════════════════ */
+
+const TAP_THRESHOLD = 12; // px — movimento acima disso cancela o tap
+
+function useTapHandler(handler: () => void) {
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  return {
+    onPointerDown: (e: React.PointerEvent) => {
+      startRef.current = { x: e.clientX, y: e.clientY };
+    },
+    onPointerUp: (e: React.PointerEvent) => {
+      if (!startRef.current) return;
+      const dx = Math.abs(e.clientX - startRef.current.x);
+      const dy = Math.abs(e.clientY - startRef.current.y);
+      startRef.current = null;
+      if (dx < TAP_THRESHOLD && dy < TAP_THRESHOLD) handler();
+    },
+    onPointerCancel: () => { startRef.current = null; },
+  };
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    ERROR BOUNDARY
@@ -491,16 +557,11 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
       <div className="min-h-screen bg-background flex items-center justify-center p-8">
         <div className="max-w-md w-full border border-red-500/30 bg-red-500/5 p-8">
           <div className="font-mono text-[10px] text-red-400 tracking-widest uppercase mb-3">Erro do Sistema</div>
-          <h1 className="text-4xl font-black uppercase text-foreground mb-4 leading-none" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
-            Algo<br /><span className="text-red-400">quebrou.</span>
-          </h1>
+          <h1 className="text-4xl font-black uppercase text-foreground mb-4 leading-none" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Algo<br /><span className="text-red-400">quebrou.</span></h1>
           <div className="border border-red-500/20 bg-background p-3 mb-5 overflow-auto max-h-32">
             <code className="font-mono text-[10px] text-red-300/70 break-all">{error.message}</code>
           </div>
-          <div className="flex gap-3">
-            <button onClick={() => this.setState({ error: null })} className="flex items-center gap-2 border border-border px-4 py-2.5 font-mono text-xs text-muted-foreground uppercase tracking-wider hover:border-primary hover:text-primary transition-colors"><RefreshCw size={12} /> Tentar</button>
-            <button onClick={() => window.location.reload()} className="flex items-center gap-2 bg-primary text-background px-4 py-2.5 font-bold text-xs tracking-widest uppercase"><RefreshCw size={12} /> Recarregar</button>
-          </div>
+          <button onClick={() => window.location.reload()} className="flex items-center gap-2 bg-primary text-background px-4 py-2.5 font-bold text-xs tracking-widest uppercase"><RefreshCw size={12} /> Recarregar</button>
         </div>
       </div>
     );
@@ -550,12 +611,6 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
-/* Skeleton card */
-function SkeletonCard() {
-  return <div className="aspect-video bg-muted animate-pulse" />;
-}
-
-/* Loading screen */
 function LoadingScreen() {
   const [dots, setDots] = useState(".");
   useEffect(() => { const t = setInterval(() => setDots(d => d.length >= 3 ? "." : d + "."), 500); return () => clearInterval(t); }, []);
@@ -574,7 +629,6 @@ function LoadingScreen() {
   );
 }
 
-/* Upload progress bar */
 function UploadProgressBar({ progress }: { progress: UploadProgress | null }) {
   if (!progress) return null;
   const color = progress.phase === "error" ? "bg-red-500" : progress.phase === "done" ? "bg-green-500" : "bg-primary";
@@ -602,7 +656,6 @@ function UploadProgressBar({ progress }: { progress: UploadProgress | null }) {
   );
 }
 
-/* Publish progress modal */
 function PublishProgressModal({ open, steps, onClose }: { open: boolean; steps: PublishStep[]; onClose: () => void }) {
   const allDone = steps.length > 0 && steps.every(s => s.status === "done");
   const hasError = steps.some(s => s.status === "error");
@@ -615,34 +668,31 @@ function PublishProgressModal({ open, steps, onClose }: { open: boolean; steps: 
           <div>
             <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-0.5">GitHub + Vercel</div>
             <h2 className="text-xl font-black uppercase text-foreground" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
-              {hasError ? "Falha na publicação" : allDone ? "Publicado!" : "Publicando..."}
+              {hasError ? "Falha" : allDone ? "Publicado!" : "Publicando..."}
             </h2>
           </div>
           {(allDone || hasError) && <button onClick={onClose} className="w-8 h-8 flex items-center justify-center border border-border text-muted-foreground"><X size={14} /></button>}
         </div>
         <div className="p-6 space-y-3">
-          {steps.map((step, i) => {
-            const locked = i > 0 && steps[i - 1].status === "pending";
-            return (
-              <div key={step.id} className={`flex items-start gap-3 transition-opacity ${locked ? "opacity-25" : "opacity-100"}`}>
-                <div className="flex-shrink-0 w-5 h-5 mt-0.5 flex items-center justify-center">
-                  {step.status === "done" && <CheckCircle2 size={16} className="text-green-400" />}
-                  {step.status === "running" && <Loader2 size={16} className="text-primary animate-spin" />}
-                  {step.status === "error" && <XCircle size={16} className="text-red-400" />}
-                  {step.status === "pending" && <div className="w-2.5 h-2.5 rounded-full border border-border" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className={`text-sm font-medium ${step.status === "done" ? "text-green-400" : step.status === "running" ? "text-primary" : step.status === "error" ? "text-red-400" : "text-muted-foreground"}`}>{step.label}</span>
-                  {step.error && <p className="font-mono text-[10px] text-red-400 mt-0.5 break-all">{step.error}</p>}
-                </div>
+          {steps.map((step, i) => (
+            <div key={step.id} className={`flex items-start gap-3 transition-opacity ${i > 0 && steps[i-1].status === "pending" ? "opacity-25" : "opacity-100"}`}>
+              <div className="flex-shrink-0 w-5 h-5 mt-0.5 flex items-center justify-center">
+                {step.status === "done" && <CheckCircle2 size={16} className="text-green-400" />}
+                {step.status === "running" && <Loader2 size={16} className="text-primary animate-spin" />}
+                {step.status === "error" && <XCircle size={16} className="text-red-400" />}
+                {step.status === "pending" && <div className="w-2.5 h-2.5 rounded-full border border-border" />}
               </div>
-            );
-          })}
+              <div className="flex-1 min-w-0">
+                <span className={`text-sm font-medium ${step.status === "done" ? "text-green-400" : step.status === "running" ? "text-primary" : step.status === "error" ? "text-red-400" : "text-muted-foreground"}`}>{step.label}</span>
+                {step.error && <p className="font-mono text-[10px] text-red-400 mt-0.5 break-all">{step.error}</p>}
+              </div>
+            </div>
+          ))}
         </div>
         {(allDone || hasError) && (
           <div className="px-6 pb-5 border-t border-border pt-4 space-y-3">
-            {allDone && <div className="flex items-start gap-2 text-sm text-muted-foreground font-light"><Clock size={13} className="text-amber-400 flex-shrink-0 mt-0.5" /><span>Site atualizado em ~1–2 min após a Vercel concluir o deploy.</span></div>}
-            <button onClick={onClose} className={`w-full py-2.5 font-bold text-xs tracking-widest uppercase ${allDone ? "bg-primary text-background" : "border border-border text-muted-foreground"}`}>{allDone ? "Fechar" : "Fechar"}</button>
+            {allDone && <div className="flex items-start gap-2 text-sm text-muted-foreground font-light"><Clock size={13} className="text-amber-400 flex-shrink-0 mt-0.5" /><span>Site ao vivo em ~1–2 min.</span></div>}
+            <button onClick={onClose} className={`w-full py-2.5 font-bold text-xs tracking-widest uppercase ${allDone ? "bg-primary text-background" : "border border-border text-muted-foreground"}`}>Fechar</button>
           </div>
         )}
       </div>
@@ -650,11 +700,13 @@ function PublishProgressModal({ open, steps, onClose }: { open: boolean; steps: 
   );
 }
 
-/* Admin login */
 function AdminLoginModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
   const [user, setUser] = useState(""); const [pass, setPass] = useState(""); const [showPass, setShowPass] = useState(false); const [err, setErr] = useState("");
   useEffect(() => { if (!open) { setUser(""); setPass(""); setErr(""); } }, [open]);
-  const submit = () => { if (user === ADMIN_USER && pass === ADMIN_PASS) { sessionStorage.setItem(SESSION_KEY, "1"); onSuccess(); onClose(); } else setErr("Usuário ou senha incorretos."); };
+  const submit = () => {
+    if (user === ADMIN_USER && pass === ADMIN_PASS) { sessionStorage.setItem(SESSION_KEY, "1"); onSuccess(); onClose(); }
+    else setErr("Usuário ou senha incorretos.");
+  };
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
@@ -668,7 +720,9 @@ function AdminLoginModal({ open, onClose, onSuccess }: { open: boolean; onClose:
           <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Usuário</label><input value={user} onChange={e => setUser(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" autoComplete="username" /></div>
           <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Senha</label>
             <div className="relative"><input type={showPass ? "text" : "password"} value={pass} onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === "Enter" && submit()} className="w-full bg-muted border border-border px-4 py-3 pr-11 text-sm text-foreground focus:outline-none focus:border-primary" autoComplete="current-password" />
-              <button onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{showPass ? <Eye size={15} /> : <EyeOff size={15} />}</button></div></div>
+              <button onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{showPass ? <Eye size={15} /> : <EyeOff size={15} />}</button>
+            </div>
+          </div>
           {err && <p className="font-mono text-[10px] text-red-400">{err}</p>}
         </div>
         <div className="px-6 py-4 border-t border-border flex items-center justify-between">
@@ -676,6 +730,56 @@ function AdminLoginModal({ open, onClose, onSuccess }: { open: boolean; onClose:
           <button onClick={submit} className="flex items-center gap-2 bg-primary text-background px-6 py-2.5 font-bold text-xs tracking-widest uppercase"><Lock size={12} /> Entrar</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   IMAGE MULTI-CAROUSEL (para projetos com várias imagens)
+═══════════════════════════════════════════════════════════════════ */
+
+function ImageCarousel({ images, title, fullscreen }: { images: string[]; title: string; fullscreen?: boolean }) {
+  const [idx, setIdx] = useState(0);
+  const [zoom, setZoom] = useState(false);
+  const startX = useRef<number | null>(null);
+
+  const prev = () => setIdx(i => (i - 1 + images.length) % images.length);
+  const next = () => setIdx(i => (i + 1) % images.length);
+
+  const handlers = {
+    onPointerDown: (e: React.PointerEvent) => { startX.current = e.clientX; },
+    onPointerUp: (e: React.PointerEvent) => {
+      if (startX.current === null) return;
+      const dx = e.clientX - startX.current;
+      startX.current = null;
+      if (Math.abs(dx) > 40) { dx < 0 ? next() : prev(); }
+    },
+    onPointerCancel: () => { startX.current = null; },
+  };
+
+  if (images.length === 0) return null;
+
+  return (
+    <div className="relative w-full h-full select-none" {...handlers} style={{ touchAction: "pan-y" }}>
+      <img
+        src={images[idx]} alt={`${title} ${idx + 1}`}
+        className={`w-full h-full ${fullscreen ? "object-contain" : "object-cover"} transition-opacity duration-200`}
+        loading="lazy"
+      />
+      {images.length > 1 && (<>
+        <button onClick={e => { e.stopPropagation(); prev(); }} className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-background/70 flex items-center justify-center text-foreground"><ChevronLeft size={14} /></button>
+        <button onClick={e => { e.stopPropagation(); next(); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-background/70 flex items-center justify-center text-foreground"><ChevronRight size={14} /></button>
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+          {images.map((_, i) => <div key={i} className={`rounded-full transition-all ${i === idx ? "w-4 h-1.5 bg-primary" : "w-1.5 h-1.5 bg-foreground/40"}`} />)}
+        </div>
+      </>)}
+      {fullscreen && <button onClick={e => { e.stopPropagation(); setZoom(!zoom); }} className="absolute top-2 right-2 w-7 h-7 bg-background/70 flex items-center justify-center text-foreground"><ZoomIn size={13} /></button>}
+      {zoom && (
+        <div className="fixed inset-0 z-[700] bg-background/98 flex items-center justify-center" onClick={() => setZoom(false)}>
+          <img src={images[idx]} alt={title} className="max-w-full max-h-full object-contain" />
+          <button className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center border border-border text-foreground"><X size={16} /></button>
+        </div>
+      )}
     </div>
   );
 }
@@ -691,12 +795,15 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
   const isEmbed = item.mediaType === "embed";
+  const isMultiImage = item.mediaType === "image" && item.images && item.images.length > 1;
   const thumbSrc = item.thumbUrl || (isEmbed && item.embedPlatform === "youtube" && item.embedId ? `https://img.youtube.com/vi/${item.embedId}/hqdefault.jpg` : "");
+  const tap = useTapHandler(() => onClick?.());
 
   const startPlay = useCallback(() => {
+    if (isMultiImage) return;
     setPlaying(true);
     if (item.mediaType === "video" && videoRef.current) { videoRef.current.currentTime = 0; videoRef.current.play().catch(() => {}); }
-  }, [item.mediaType]);
+  }, [item.mediaType, isMultiImage]);
 
   const stopPlay = useCallback(() => {
     setPlaying(false);
@@ -707,8 +814,8 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
     <div
       className="relative bg-card group overflow-hidden aspect-video cursor-pointer select-none"
       onMouseEnter={startPlay} onMouseLeave={stopPlay}
-      onClick={() => onClick?.()}
-      onTouchEnd={e => { e.preventDefault(); onClick?.(); }}
+      {...tap}
+      style={{ touchAction: "pan-y" }}
     >
       {item.mediaType === "video" && (
         <video ref={videoRef} src={item.mediaUrl} muted playsInline loop preload="metadata" className="absolute inset-0 w-full h-full object-cover" style={{ pointerEvents: "none" }} />
@@ -722,8 +829,12 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
       {isEmbed && playing && item.embedId && (
         <iframe src={item.embedPlatform === "youtube" ? `https://www.youtube.com/embed/${item.embedId}?autoplay=1&mute=1` : `https://player.vimeo.com/video/${item.embedId}?autoplay=1&muted=1`} className="absolute inset-0 w-full h-full" allow="autoplay" style={{ pointerEvents: "none", border: 0 }} />
       )}
-      {item.mediaType === "image" && (
-        <img src={item.mediaUrl} alt={item.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+      {isMultiImage && item.images ? (
+        <div className="absolute inset-0" style={{ pointerEvents: "none" }}>
+          <ImageCarousel images={item.images} title={item.title} />
+        </div>
+      ) : item.mediaType === "image" && (
+        <img src={item.mediaUrl} alt={item.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" loading="lazy" />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent pointer-events-none" />
       <div className="absolute bottom-0 left-0 right-0 p-3 md:p-5 pointer-events-none">
@@ -735,9 +846,14 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
           {isEmbed ? <Youtube size={10} className="text-white" /> : <Play size={10} className="text-background ml-0.5" />}
         </div>
       )}
+      {isMultiImage && (
+        <div className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center bg-background/70 font-mono text-[9px] text-foreground">
+          1/{item.images?.length}
+        </div>
+      )}
       <div className={`absolute inset-0 border-2 border-primary transition-opacity pointer-events-none ${playing ? "opacity-40" : "opacity-0"}`} />
       {showAdmin && (
-        <div className="absolute top-2 left-2 flex flex-col gap-1" onClick={e => e.stopPropagation()}>
+        <div className="absolute top-2 left-2 flex flex-col gap-1" style={{ pointerEvents: "all" }} onPointerDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
           {onTogglePin && (
             <button onClick={() => onTogglePin(item.id)} className={`flex items-center gap-1 px-2 py-1 text-[9px] font-mono tracking-wider uppercase border transition-colors ${isPinned ? "bg-primary text-background border-primary" : "bg-background/80 text-muted-foreground border-border"}`}>
               {isPinned ? <><Pin size={9} /> Fixado</> : <><PinOff size={9} /> Fixar</>}
@@ -755,30 +871,42 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   CAROUSEL ROW (Netflix style)
+   CAROUSEL ROW (Netflix style) — com wheel e swipe
 ═══════════════════════════════════════════════════════════════════ */
+
+function useCarouselScroll() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(true);
+
+  const updateArrows = useCallback(() => {
+    const el = scrollRef.current; if (!el) return;
+    setCanLeft(el.scrollLeft > 8);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
+  }, []);
+
+  const scroll = (dir: "left" | "right") => {
+    const el = scrollRef.current; if (!el) return;
+    const cardW = (el.querySelector("[data-card]") as HTMLElement)?.offsetWidth ?? 260;
+    el.scrollBy({ left: dir === "left" ? -(cardW * 2 + 12) : (cardW * 2 + 12), behavior: "smooth" });
+  };
+
+  const onWheel = (e: React.WheelEvent) => {
+    const el = scrollRef.current; if (!el) return;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // touchpad já lida com isso
+    e.preventDefault();
+    el.scrollBy({ left: e.deltaY, behavior: "auto" });
+  };
+
+  return { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel };
+}
 
 function CarouselRow({ label, items, showAdmin, pinned, onTogglePin, onDelete, onClickItem }: {
   label: string; items: DisplayProject[]; showAdmin: boolean; pinned: Set<string>;
   onTogglePin: (id: string) => void; onDelete: (id: string) => void; onClickItem: (item: DisplayProject) => void;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canLeft, setCanLeft] = useState(false);
-  const [canRight, setCanRight] = useState(true);
+  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll();
   const accent = CATEGORY_COLORS[label] ?? "var(--primary)";
-
-  const updateArrows = () => {
-    const el = scrollRef.current; if (!el) return;
-    setCanLeft(el.scrollLeft > 8);
-    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
-  };
-
-  const scroll = (dir: "left" | "right") => {
-    const el = scrollRef.current; if (!el) return;
-    const cardW = (el.querySelector("div") as HTMLElement)?.offsetWidth ?? 260;
-    el.scrollBy({ left: dir === "left" ? -(cardW * 2 + 12) : (cardW * 2 + 12), behavior: "smooth" });
-  };
-
   if (items.length === 0) return null;
 
   return (
@@ -790,10 +918,10 @@ function CarouselRow({ label, items, showAdmin, pinned, onTogglePin, onDelete, o
           <span className="font-mono text-[9px] text-muted-foreground tracking-widest">{items.length}</span>
         </div>
         <div className="flex gap-1">
-          {([["left", "‹"], ["right", "›"]] as const).map(([dir, ch]) => (
+          {(["left", "right"] as const).map(dir => (
             <button key={dir} onClick={() => scroll(dir)} disabled={dir === "left" ? !canLeft : !canRight}
               className={`w-7 h-7 border flex items-center justify-center text-xs font-bold transition-all ${(dir === "left" ? canLeft : canRight) ? "border-border text-muted-foreground hover:border-primary hover:text-primary" : "border-border/30 text-muted-foreground/20 cursor-not-allowed"}`}>
-              {ch}
+              {dir === "left" ? "‹" : "›"}
             </button>
           ))}
         </div>
@@ -801,10 +929,13 @@ function CarouselRow({ label, items, showAdmin, pinned, onTogglePin, onDelete, o
       <div className="relative">
         <div className="absolute left-0 top-0 bottom-2 w-6 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
         <div className={`absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity ${canRight ? "opacity-100" : "opacity-0"}`} />
-        <div ref={scrollRef} onScroll={updateArrows} className="flex gap-2 md:gap-3 overflow-x-auto pb-2"
-          style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        <div
+          ref={scrollRef} onScroll={updateArrows} onWheel={onWheel}
+          className="flex gap-2 md:gap-3 overflow-x-auto pb-2"
+          style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
+        >
           {items.map((item, idx) => (
-            <div key={item.id} className="flex-shrink-0" style={{ scrollSnapAlign: "start", width: idx === 0 && items.length > 1 ? "clamp(220px, 38vw, 320px)" : "clamp(180px, 30vw, 260px)" }}>
+            <div key={item.id} data-card className="flex-shrink-0" style={{ scrollSnapAlign: "start", width: idx === 0 && items.length > 1 ? "clamp(220px, 38vw, 320px)" : "clamp(180px, 30vw, 260px)" }}>
               <ProjectCard item={item} showAdmin={showAdmin} isPinned={pinned.has(item.id)} onTogglePin={onTogglePin} onDelete={!item.isFixed ? onDelete : undefined} onClick={() => onClickItem(item)} />
             </div>
           ))}
@@ -816,40 +947,43 @@ function CarouselRow({ label, items, showAdmin, pinned, onTogglePin, onDelete, o
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   AUDIO CARD + AUDIO CAROUSEL
+   AUDIO SYSTEM — player com estado reativo correto
 ═══════════════════════════════════════════════════════════════════ */
 
-function AudioCard({ audio, isPlaying, onToggle, onDelete, showAdmin }: {
-  audio: CMSAudio; isPlaying: boolean; onToggle: (id: string) => void;
-  onDelete?: (id: string) => void; showAdmin: boolean;
+function AudioCard({ audio, isActive, isPlaying, onToggle, onDelete, showAdmin }: {
+  audio: CMSAudio; isActive: boolean; isPlaying: boolean;
+  onToggle: (id: string) => void; onDelete?: (id: string) => void; showAdmin: boolean;
 }) {
+  const tap = useTapHandler(() => onToggle(audio.id));
   return (
     <div className="flex-shrink-0 w-40 md:w-48 group relative">
-      {/* Cover art */}
       <div
-        className={`aspect-square relative overflow-hidden cursor-pointer border transition-colors ${isPlaying ? "border-primary/60" : "border-border hover:border-primary/40"}`}
-        onClick={() => onToggle(audio.id)}
+        className={`aspect-square relative overflow-hidden cursor-pointer border transition-colors ${isActive ? "border-primary/60" : "border-border hover:border-primary/40"}`}
+        {...tap}
+        style={{ touchAction: "pan-y" }}
       >
         {audio.coverUrl
-          ? <img src={audio.coverUrl} alt={audio.title} className="w-full h-full object-cover" />
+          ? <img src={audio.coverUrl} alt={audio.title} className="w-full h-full object-cover" loading="lazy" />
           : <div className="w-full h-full bg-card flex items-center justify-center" style={{ background: "linear-gradient(135deg, #1A1E2B 0%, #0F111A 100%)" }}>
               <Music size={32} className="text-muted-foreground/40" />
             </div>}
-        <div className={`absolute inset-0 bg-background/40 flex items-center justify-center transition-opacity ${isPlaying ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+        <div className={`absolute inset-0 bg-background/40 flex items-center justify-center transition-opacity ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
           <div className="w-10 h-10 bg-primary flex items-center justify-center">
             {isPlaying ? <Pause size={16} className="text-background" /> : <Play size={16} className="text-background ml-0.5" />}
           </div>
         </div>
-        {isPlaying && <div className="absolute top-2 right-2 flex gap-0.5 items-end h-4">{[3, 5, 4, 6, 3].map((h, i) => <div key={i} className="w-0.5 bg-primary animate-pulse rounded-full" style={{ height: `${h * 2}px`, animationDelay: `${i * 0.15}s` }} />)}</div>}
+        {isActive && isPlaying && (
+          <div className="absolute top-2 right-2 flex gap-0.5 items-end h-4">
+            {[3, 5, 4, 6, 3].map((h, i) => <div key={i} className="w-0.5 bg-primary animate-pulse rounded-full" style={{ height: `${h * 2}px`, animationDelay: `${i * 0.15}s` }} />)}
+          </div>
+        )}
       </div>
-      {/* Track info */}
       <div className="pt-2.5">
         <p className="text-sm font-bold text-foreground truncate leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{audio.title}</p>
         {audio.artist && <p className="font-mono text-[10px] text-muted-foreground truncate mt-0.5">{audio.artist}</p>}
       </div>
-      {/* Admin delete */}
       {showAdmin && onDelete && (
-        <button onClick={e => { e.stopPropagation(); onDelete(audio.id); }} className="absolute top-1 right-1 w-6 h-6 bg-background/80 border border-red-500/50 text-red-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onPointerDown={e => e.stopPropagation()} onClick={() => onDelete(audio.id)} className="absolute top-1 right-1 w-6 h-6 bg-background/80 border border-red-500/50 text-red-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
           <Trash2 size={9} />
         </button>
       )}
@@ -857,58 +991,71 @@ function AudioCard({ audio, isPlaying, onToggle, onDelete, showAdmin }: {
   );
 }
 
-function AudioCarousel({ audios, showAdmin, onDelete, ghConfigured }: {
-  audios: CMSAudio[]; showAdmin: boolean; onDelete: (id: string) => void; ghConfigured: boolean;
+function AudioCarousel({ audios, showAdmin, onDelete }: {
+  audios: CMSAudio[]; showAdmin: boolean; onDelete: (id: string) => void;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll();
+  const audioElRef = useRef<HTMLAudioElement>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
-  const [canLeft, setCanLeft] = useState(false);
-  const [canRight, setCanRight] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const activeAudio = audios.find(a => a.id === activeId);
 
-  const toggle = (id: string) => {
-    const el = audioRef.current; if (!el) return;
-    if (activeId === id) {
-      el.paused ? el.play() : el.pause();
-      if (!el.paused) setActiveId(id);
+  const toggle = useCallback((id: string) => {
+    const el = audioElRef.current;
+    if (activeId === id && el) {
+      if (el.paused) { el.play().catch(() => {}); }
+      else { el.pause(); }
     } else {
-      setActiveId(id); setProgress(0); el.currentTime = 0;
-      setTimeout(() => el.play().catch(() => {}), 50);
+      // Switch to new track
+      setActiveId(id);
+      setCurrentTime(0);
+      setDuration(0);
+      setLoading(true);
+      // Audio element will reload via key change, then autoplay
     }
-  };
+  }, [activeId]);
 
-  const scrollRow = (dir: "left" | "right") => {
-    const el = scrollRef.current; if (!el) return;
-    el.scrollBy({ left: dir === "left" ? -300 : 300, behavior: "smooth" });
-  };
+  // When activeId changes (new track), autoplay after element mounts
+  useEffect(() => {
+    if (!activeId) return;
+    const el = audioElRef.current;
+    if (!el) return;
+    setIsPlaying(false);
+    const tryPlay = () => { el.play().catch(() => setIsPlaying(false)); };
+    if (el.readyState >= 3) tryPlay();
+    else el.addEventListener("canplay", tryPlay, { once: true });
+  }, [activeId]);
 
-  const updateArrows = () => {
-    const el = scrollRef.current; if (!el) return;
-    setCanLeft(el.scrollLeft > 8);
-    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
+  const seekTo = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = audioElRef.current; if (!el || !duration) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    el.currentTime = ((e.clientX - r.left) / r.width) * duration;
   };
-
-  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
   if (audios.length === 0 && !showAdmin) return null;
 
   return (
     <div className="space-y-4">
-      {/* Audio element */}
       {activeAudio && (
         <audio
           key={activeAudio.id}
-          ref={audioRef}
+          ref={audioElRef}
           src={activeAudio.url}
           muted={muted}
-          onTimeUpdate={() => { const el = audioRef.current; if (el) setProgress(el.currentTime / (el.duration || 1)); }}
-          onLoadedMetadata={() => { const el = audioRef.current; if (el) setDuration(el.duration); }}
-          onEnded={() => setActiveId(null)}
+          preload="metadata"
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => { setIsPlaying(false); setActiveId(null); }}
+          onTimeUpdate={() => { const el = audioElRef.current; if (el) setCurrentTime(el.currentTime); }}
+          onLoadedMetadata={() => { const el = audioElRef.current; if (el) setDuration(el.duration); setLoading(false); }}
+          onWaiting={() => setLoading(true)}
+          onCanPlay={() => setLoading(false)}
+          onError={() => { setLoading(false); toast.error("Erro ao carregar áudio."); }}
         />
       )}
 
@@ -920,24 +1067,27 @@ function AudioCarousel({ audios, showAdmin, onDelete, ghConfigured }: {
           <span className="font-mono text-[9px] text-muted-foreground">{audios.length} faixa{audios.length !== 1 ? "s" : ""}</span>
         </div>
         <div className="flex gap-1">
-          {([["left", "‹"], ["right", "›"]] as const).map(([dir, ch]) => (
-            <button key={dir} onClick={() => scrollRow(dir)} disabled={dir === "left" ? !canLeft : !canRight}
+          {(["left", "right"] as const).map(dir => (
+            <button key={dir} onClick={() => scroll(dir)} disabled={dir === "left" ? !canLeft : !canRight}
               className={`w-7 h-7 border flex items-center justify-center text-xs font-bold transition-all ${(dir === "left" ? canLeft : canRight) ? "border-border text-muted-foreground hover:border-primary hover:text-primary" : "border-border/30 text-muted-foreground/20 cursor-not-allowed"}`}>
-              {ch}
+              {dir === "left" ? "‹" : "›"}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Horizontal scroll */}
+      {/* Scroll row */}
       <div className="relative">
         <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
         <div className={`absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity ${canRight ? "opacity-100" : "opacity-0"}`} />
-        <div ref={scrollRef} onScroll={updateArrows} className="flex gap-3 overflow-x-auto pb-2"
-          style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        <div
+          ref={scrollRef} onScroll={updateArrows} onWheel={onWheel}
+          className="flex gap-3 overflow-x-auto pb-2"
+          style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
+        >
           {audios.map(a => (
-            <div key={a.id} style={{ scrollSnapAlign: "start" }}>
-              <AudioCard audio={a} isPlaying={activeId === a.id} onToggle={toggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} />
+            <div key={a.id} data-card style={{ scrollSnapAlign: "start" }}>
+              <AudioCard audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={toggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} />
             </div>
           ))}
           <div className="flex-shrink-0 w-4" />
@@ -953,18 +1103,21 @@ function AudioCarousel({ audios, showAdmin, onDelete, ghConfigured }: {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold truncate text-foreground" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{activeAudio.title}</p>
             {activeAudio.artist && <p className="font-mono text-[9px] text-muted-foreground truncate">{activeAudio.artist}</p>}
-            <div className="flex items-center gap-2 mt-1">
-              <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden cursor-pointer" onClick={e => { const el = audioRef.current; if (!el) return; const r = e.currentTarget.getBoundingClientRect(); el.currentTime = ((e.clientX - r.left) / r.width) * el.duration; }}>
-                <div className="h-full bg-primary rounded-full" style={{ width: `${progress * 100}%` }} />
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="font-mono text-[9px] text-muted-foreground tabular-nums w-8 flex-shrink-0">{fmtTime(currentTime)}</span>
+              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden cursor-pointer relative" onClick={seekTo}>
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : "0%" }} />
               </div>
-              <span className="font-mono text-[9px] text-muted-foreground tabular-nums">{fmt(duration)}</span>
+              <span className="font-mono text-[9px] text-muted-foreground tabular-nums w-8 flex-shrink-0 text-right">{duration > 0 ? fmtTime(duration) : "--:--"}</span>
             </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button onClick={() => { const el = audioRef.current; if (!el) return; el.paused ? el.play() : el.pause(); }} className="w-8 h-8 bg-primary flex items-center justify-center text-background">
-              {audioRef.current?.paused !== false ? <Play size={13} className="ml-0.5" /> : <Pause size={13} />}
-            </button>
-            <button onClick={() => { setMuted(!muted); if (audioRef.current) audioRef.current.muted = !muted; }} className="w-7 h-7 border border-border text-muted-foreground flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+            {loading
+              ? <div className="w-8 h-8 bg-primary/20 flex items-center justify-center"><Loader2 size={13} className="animate-spin text-primary" /></div>
+              : <button onClick={() => toggle(activeAudio.id)} className="w-8 h-8 bg-primary flex items-center justify-center text-background">
+                  {isPlaying ? <Pause size={13} /> : <Play size={13} className="ml-0.5" />}
+                </button>}
+            <button onClick={() => { setMuted(!muted); if (audioElRef.current) audioElRef.current.muted = !muted; }} className="w-7 h-7 border border-border text-muted-foreground flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
               {muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
             </button>
           </div>
@@ -975,7 +1128,7 @@ function AudioCarousel({ audios, showAdmin, onDelete, ghConfigured }: {
         <div className="border border-dashed border-border py-8 text-center">
           <Music size={20} className="text-muted-foreground mx-auto mb-2" />
           <p className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase">Nenhuma produção ainda</p>
-          <p className="font-mono text-[9px] text-muted-foreground/50 mt-1">Upload via painel admin — suporta MP3, WAV, AAC, M4A, OGG, FLAC</p>
+          <p className="font-mono text-[9px] text-muted-foreground/50 mt-1">Upload via painel admin · MP3, WAV, AAC, M4A, OGG, FLAC</p>
         </div>
       )}
     </div>
@@ -997,12 +1150,11 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
   ghConfigured: boolean;
 }) {
   const [tab, setTab] = useState<UploadMediaType>("video");
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
-  const [cat, setCat] = useState(CATEGORIES[0]);
+  const [title, setTitle] = useState(""); const [desc, setDesc] = useState(""); const [cat, setCat] = useState(CATEGORIES[0]);
   const [mode, setMode] = useState<UploadMode>("file");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [extraImageFiles, setExtraImageFiles] = useState<File[]>([]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioCoverFile, setAudioCoverFile] = useState<File | null>(null);
   const [artist, setArtist] = useState("");
@@ -1018,7 +1170,7 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
 
   const reset = useCallback(() => {
     setTitle(""); setDesc(""); setCat(CATEGORIES[0]); setMode("file");
-    setMediaFile(null); setThumbFile(null); setAudioFile(null); setAudioCoverFile(null);
+    setMediaFile(null); setThumbFile(null); setExtraImageFiles([]); setAudioFile(null); setAudioCoverFile(null);
     setArtist(""); setVideoUrl(""); setParsedVideo(null); setThumbImgOk(true);
     setProgress(null); setProgress2(null); setOversize(false); setBusy(false); setDone(false); setErrMsg("");
   }, []);
@@ -1043,11 +1195,10 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
     if (!title.trim() || busy) return;
     setBusy(true); setErrMsg("");
 
-    // Audio tab
     if (tab === "audio") {
-      if (!audioFile || !ghConfigured) { setErrMsg("Configure o GitHub e selecione um arquivo de áudio."); setBusy(false); return; }
+      if (!audioFile || !ghConfigured) { setErrMsg("Configure o GitHub e selecione um arquivo."); setBusy(false); return; }
       const url = await uploadFile(audioFile, "audio", setProgress);
-      if (!url) { setErrMsg("Falha no upload do áudio."); setBusy(false); return; }
+      if (!url) { setErrMsg("Falha no upload."); setBusy(false); return; }
       let coverUrl: string | undefined;
       if (audioCoverFile) { const cu = await uploadFile(audioCoverFile, "image", setProgress2); if (cu) coverUrl = cu; }
       await onSaveAudio({ id: `audio-${Date.now()}`, title: title.trim(), artist: artist.trim() || undefined, url, coverUrl, createdAt: Date.now() });
@@ -1055,21 +1206,37 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
       return;
     }
 
-    // Embed
-    if ((mode === "youtube" || mode === "vimeo") && parsedVideo) {
-      await onSave({ id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat, mediaType: "embed", mediaUrl: parsedVideo.embed, thumbUrl: parsedVideo.thumb || undefined, embedPlatform: parsedVideo.platform, embedId: parsedVideo.id, createdAt: Date.now() });
+    const embedReady = (mode === "youtube" || mode === "vimeo") && !!parsedVideo;
+    if (embedReady) {
+      await onSave({ id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat, mediaType: "embed", mediaUrl: parsedVideo!.embed, thumbUrl: parsedVideo!.thumb || undefined, embedPlatform: parsedVideo!.platform, embedId: parsedVideo!.id, createdAt: Date.now() });
       setDone(true); setTimeout(() => { reset(); onClose(); }, 1000);
       return;
     }
 
-    // File
     if (!mediaFile || !ghConfigured) { setErrMsg("Configure o GitHub e selecione um arquivo."); setBusy(false); return; }
     const mType = mediaFile.type.startsWith("video") ? "video" : "image";
     const mediaUrl = await uploadFile(mediaFile, mType, setProgress);
     if (!mediaUrl) { setErrMsg("Falha no upload."); setBusy(false); return; }
+
+    // Upload extras (multi-image)
+    let imagesUrls: string[] = [];
+    if (mType === "image") {
+      imagesUrls = [mediaUrl];
+      for (let i = 0; i < extraImageFiles.length; i++) {
+        const u = await uploadFile(extraImageFiles[i], "image", () => {});
+        if (u) imagesUrls.push(u);
+      }
+    }
+
     let thumbUrl: string | undefined;
     if (thumbFile) { const tu = await uploadFile(thumbFile, "image", setProgress2); if (tu) thumbUrl = tu; }
-    await onSave({ id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat, mediaType: mType, mediaUrl, thumbUrl, createdAt: Date.now() });
+
+    await onSave({
+      id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat,
+      mediaType: mType, mediaUrl,
+      images: imagesUrls.length > 1 ? imagesUrls : undefined,
+      thumbUrl, createdAt: Date.now(),
+    });
     setDone(true); setTimeout(() => { reset(); onClose(); }, 1000);
   };
 
@@ -1093,7 +1260,6 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
           <button onClick={() => { if (!busy) { reset(); onClose(); } }} className="w-9 h-9 flex items-center justify-center border border-border text-muted-foreground"><X size={15} /></button>
         </div>
 
-        {/* Media type tabs */}
         <div className="flex border-b border-border flex-shrink-0">
           {([["video", <VideoIcon size={12} />, "Vídeo"], ["image", <ImageIcon size={12} />, "Imagem"], ["audio", <Music size={12} />, "Áudio"]] as const).map(([id, icon, label]) => (
             <button key={id} onClick={() => setTab(id)} className={`flex items-center gap-1.5 px-4 py-3 font-mono text-[10px] tracking-widest uppercase border-b-2 transition-colors ${tab === id ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
@@ -1102,26 +1268,26 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
           ))}
         </div>
 
-        {!ghConfigured && tab !== "video" && (
+        {!ghConfigured && (
           <div className="mx-5 mt-4 flex items-start gap-3 border border-amber-500/30 bg-amber-500/5 p-3">
             <AlertCircle size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-200/80 font-light">Configure o GitHub (aba GitHub no admin) antes de fazer uploads.</p>
+            <p className="text-xs text-amber-200/80 font-light">Configure o GitHub antes de fazer uploads.</p>
           </div>
         )}
 
         <div className="p-5 space-y-4">
-          {/* ── AUDIO TAB ── */}
           {tab === "audio" && (<>
             <div>
               <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Arquivo de áudio * (MP3, WAV, AAC, M4A, OGG, FLAC)</label>
               <div className={`border-2 border-dashed p-5 text-center cursor-pointer transition-colors ${audioFile ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`} onClick={() => document.getElementById("audio-inp")?.click()}>
                 <input id="audio-inp" type="file" accept={AUDIO_ACCEPT} className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) setAudioFile(f); e.target.value = ""; }} />
-                {audioFile ? <div className="flex items-center justify-center gap-2 text-primary"><Music size={16} /><span className="text-sm truncate max-w-[200px]">{audioFile.name}</span><span className="font-mono text-[10px] text-muted-foreground">({(audioFile.size / 1024 / 1024).toFixed(1)} MB)</span></div>
+                {audioFile ? <div className="flex items-center justify-center gap-2 text-primary"><Music size={16} /><span className="text-sm truncate max-w-[200px]">{audioFile.name}</span></div>
                   : <div className="flex flex-col items-center gap-2 text-muted-foreground"><Music size={20} /><span className="text-xs font-mono tracking-wider uppercase">Selecionar áudio</span></div>}
               </div>
               {progress && <div className="mt-2"><UploadProgressBar progress={progress} /></div>}
             </div>
-            <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Capa (opcional)</label>
+            <div>
+              <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Capa (opcional)</label>
               <div className={`border-2 border-dashed p-4 text-center cursor-pointer transition-colors ${audioCoverFile ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`} onClick={() => document.getElementById("audio-cover-inp")?.click()}>
                 <input id="audio-cover-inp" type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) setAudioCoverFile(f); e.target.value = ""; }} />
                 {audioCoverFile ? <div className="flex items-center justify-center gap-2 text-primary"><ImageIcon size={14} /><span className="text-sm truncate">{audioCoverFile.name}</span></div>
@@ -1129,14 +1295,13 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
               </div>
               {progress2 && <div className="mt-2"><UploadProgressBar progress={progress2} /></div>}
             </div>
-            <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Título da faixa *</label><input value={title} onChange={e => setTitle(e.target.value)} onClick={e => e.stopPropagation()} placeholder="Nome da música / EP / álbum" className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
-            <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Artista / feat. (opcional)</label><input value={artist} onChange={e => setArtist(e.target.value)} onClick={e => e.stopPropagation()} placeholder="Frederico Pierre" className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
+            <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Título da faixa *</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="Nome da música / EP / álbum" className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
+            <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Artista / feat. (opcional)</label><input value={artist} onChange={e => setArtist(e.target.value)} placeholder="Frederico Pierre" className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
           </>)}
 
-          {/* ── VIDEO / IMAGE TAB ── */}
           {tab !== "audio" && (<>
             <div>
-              <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Tipo de mídia</label>
+              <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Tipo</label>
               <div className="grid grid-cols-3 gap-2">
                 {([["file", <Upload size={13} />, "Arquivo"], ["youtube", <Youtube size={13} />, "YouTube"], ["vimeo", <Link2 size={13} />, "Vimeo"]] as const).map(([id, icon, label]) => (
                   <button key={id} onClick={() => setMode(id)} className={`flex flex-col items-center gap-1.5 py-3 border transition-colors font-mono text-[10px] tracking-widest uppercase ${mode === id ? "border-primary text-primary bg-primary/5" : "border-border text-muted-foreground hover:border-primary/50"}`}>
@@ -1148,23 +1313,27 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
 
             {mode === "file" && (<>
               <div>
-                <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">{tab === "image" ? "Imagem *" : "Arquivo de vídeo * (até 25 MB)"}</label>
+                <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">{tab === "image" ? "Imagem principal *" : "Vídeo * (até 25 MB)"}</label>
                 <div className={`border-2 border-dashed p-5 text-center cursor-pointer transition-colors ${mediaFile ? "border-primary bg-primary/5" : oversize ? "border-red-500/60" : "border-border hover:border-primary/40"}`} onClick={() => document.getElementById("media-inp")?.click()}>
                   <input id="media-inp" type="file" accept={tab === "image" ? "image/*" : "image/*,video/mp4,video/mov,video/webm,video/quicktime"} className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f); e.target.value = ""; }} />
                   {mediaFile ? <div className="flex items-center justify-center gap-2 text-primary">{mediaFile.type.startsWith("video") ? <VideoIcon size={16} /> : <ImageIcon size={16} />}<span className="text-sm truncate max-w-[200px]">{mediaFile.name}</span></div>
                     : <div className="flex flex-col items-center gap-2 text-muted-foreground"><Upload size={20} /><span className="text-xs font-mono tracking-wider uppercase">Toque ou arraste</span></div>}
                 </div>
-                {oversize && (
-                  <div className="mt-3 border border-red-500/30 bg-red-500/5 p-3 space-y-2">
-                    <p className="text-xs text-red-300 font-light flex items-center gap-2"><AlertCircle size={12} className="flex-shrink-0" />Vídeo maior que 25 MB — use YouTube ou Vimeo.</p>
-                    <div className="flex gap-2">
-                      <button onClick={() => setMode("youtube")} className="flex items-center gap-1.5 text-[10px] font-mono border border-red-500/40 text-red-300 px-3 py-1.5 hover:border-primary hover:text-primary transition-colors"><Youtube size={10} /> YouTube</button>
-                      <button onClick={() => setMode("vimeo")} className="flex items-center gap-1.5 text-[10px] font-mono border border-red-500/40 text-red-300 px-3 py-1.5 hover:border-primary hover:text-primary transition-colors"><Link2 size={10} /> Vimeo</button>
-                    </div>
-                  </div>
-                )}
+                {oversize && <div className="mt-3 border border-red-500/30 bg-red-500/5 p-3"><p className="text-xs text-red-300 font-light flex items-center gap-2"><AlertCircle size={12} />Vídeo &gt; 25 MB — use YouTube ou Vimeo.</p></div>}
                 {progress && <div className="mt-2"><UploadProgressBar progress={progress} /></div>}
               </div>
+
+              {tab === "image" && (
+                <div>
+                  <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Imagens adicionais (carrossel, opcional)</label>
+                  <div className="border-2 border-dashed border-border p-4 text-center cursor-pointer hover:border-primary/40 transition-colors" onClick={() => document.getElementById("extra-images-inp")?.click()}>
+                    <input id="extra-images-inp" type="file" accept="image/*" multiple className="hidden" onChange={e => { setExtraImageFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground"><ImageIcon size={14} /><span className="text-xs font-mono tracking-wider uppercase">{extraImageFiles.length > 0 ? `${extraImageFiles.length} imagem(ns) extra(s)` : "Adicionar mais imagens"}</span></div>
+                  </div>
+                  <p className="font-mono text-[9px] text-muted-foreground/60 mt-1">Cria um carrossel estilo Instagram.</p>
+                </div>
+              )}
+
               <div>
                 <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Thumbnail (opcional)</label>
                 <div className={`border-2 border-dashed p-4 text-center cursor-pointer transition-colors ${thumbFile ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`} onClick={() => document.getElementById("thumb-inp")?.click()}>
@@ -1178,8 +1347,8 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
 
             {(mode === "youtube" || mode === "vimeo") && (
               <div>
-                <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">URL do {mode === "youtube" ? "YouTube" : "Vimeo"} *</label>
-                <input value={videoUrl} onChange={e => setVideoUrl(e.target.value)} onClick={e => e.stopPropagation()} onFocus={e => e.stopPropagation()} placeholder={mode === "youtube" ? "https://youtube.com/watch?v=..." : "https://vimeo.com/123456789"} className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" />
+                <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">URL *</label>
+                <input value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder={mode === "youtube" ? "https://youtube.com/watch?v=..." : "https://vimeo.com/123456789"} className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" />
                 {videoUrl && !parsedVideo && <p className="font-mono text-[10px] text-amber-400 mt-1.5 flex items-center gap-1"><AlertCircle size={10} />URL não reconhecida.</p>}
                 {parsedVideo && (
                   <div className="mt-3 border border-green-500/20 bg-green-500/5 p-3 space-y-2">
@@ -1188,12 +1357,11 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
                       : <div className="w-full aspect-video bg-muted flex items-center justify-center gap-2"><Youtube size={20} className="text-muted-foreground" /><span className="font-mono text-[10px] text-muted-foreground">ID: {parsedVideo.id}</span></div>}
                   </div>
                 )}
-                {!videoUrl && <div className="mt-3 p-3 border border-border bg-muted/20 flex items-center gap-3"><WifiOff size={14} className="text-muted-foreground flex-shrink-0" /><p className="text-xs text-muted-foreground font-light">Cole a URL do vídeo — incorporado sem ocupar espaço no repositório.</p></div>}
               </div>
             )}
 
-            <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Título *</label><input value={title} onChange={e => setTitle(e.target.value)} onClick={e => e.stopPropagation()} placeholder="Nome do projeto" className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
-            <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Descrição</label><textarea value={desc} onChange={e => setDesc(e.target.value)} onClick={e => e.stopPropagation()} rows={3} className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary resize-none" /></div>
+            <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Título *</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="Nome do projeto" className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
+            <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Descrição</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary resize-none" /></div>
             <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Categoria</label>
               <div className="grid grid-cols-2 gap-2">{CATEGORIES.map(c => <button key={c} onClick={() => setCat(c)} className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2.5 border transition-colors text-left ${cat === c ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{c}</button>)}</div>
             </div>
@@ -1218,7 +1386,8 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
 ═══════════════════════════════════════════════════════════════════ */
 
 function GalleryModal({ service, allProjects, initialItem, onClose, showAdmin, onDelete, onTogglePin, pinned }: {
-  service: typeof SERVICES[number] | null; allProjects: DisplayProject[]; initialItem?: DisplayProject | null;
+  service: { number: string; title: string; icon: ReactNode; galleryCategories: string[] } | null;
+  allProjects: DisplayProject[]; initialItem?: DisplayProject | null;
   onClose: () => void; showAdmin: boolean; onDelete: (id: string) => void;
   onTogglePin: (id: string) => void; pinned: Set<string>;
 }) {
@@ -1257,13 +1426,15 @@ function GalleryModal({ service, allProjects, initialItem, onClose, showAdmin, o
                 {selected.mediaType === "embed" && selected.embedId && (
                   <iframe src={selected.embedPlatform === "youtube" ? `https://www.youtube.com/embed/${selected.embedId}?playsinline=1&rel=0` : `https://player.vimeo.com/video/${selected.embedId}?playsinline=1`} className="w-full aspect-video" allowFullScreen allow="autoplay; fullscreen; picture-in-picture; xr-spatial-tracking" style={{ border: 0 }} />
                 )}
-                {selected.mediaType === "image" && <img src={selected.mediaUrl} alt={selected.title} className="w-full h-full object-contain max-h-[55vh]" />}
+                {selected.mediaType === "image" && (selected.images && selected.images.length > 1
+                  ? <div className="w-full h-full" style={{ minHeight: 240 }}><ImageCarousel images={selected.images} title={selected.title} fullscreen /></div>
+                  : <img src={selected.mediaUrl} alt={selected.title} className="w-full h-full object-contain max-h-[55vh]" />
+                )}
               </div>
               <div className="border-t md:border-t-0 md:border-l border-border p-5 md:p-7 flex flex-col gap-4">
                 <div>
                   <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-1">{selected.category}</div>
                   <h3 className="text-xl md:text-2xl font-black uppercase text-foreground leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{selected.title}</h3>
-                  {selected.embedPlatform && <span className="inline-flex items-center gap-1 mt-1 font-mono text-[9px] text-muted-foreground border border-border px-2 py-0.5 uppercase"><Youtube size={9} /> {selected.embedPlatform}</span>}
                 </div>
                 {selected.description && <div className="border-t border-border pt-4"><div className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase mb-2">Sobre o projeto</div><p className="text-sm text-muted-foreground leading-relaxed font-light whitespace-pre-line">{selected.description}</p></div>}
                 <div className="mt-auto pt-4 border-t border-border space-y-3">
@@ -1329,8 +1500,8 @@ function LogsTab({ logs }: { logs: LogEntry[] }) {
    MEDIA LIBRARY TAB
 ═══════════════════════════════════════════════════════════════════ */
 
-function MediaLibraryTab({ cms, onDeleteProject, onDeleteAudio, showAdmin }: {
-  cms: CMSData; onDeleteProject: (id: string) => void; onDeleteAudio: (id: string) => void; showAdmin: boolean;
+function MediaLibraryTab({ cms, onDeleteProject, onDeleteAudio }: {
+  cms: CMSData; onDeleteProject: (id: string) => void; onDeleteAudio: (id: string) => void;
 }) {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "video" | "image" | "embed" | "audio">("all");
@@ -1346,40 +1517,34 @@ function MediaLibraryTab({ cms, onDeleteProject, onDeleteAudio, showAdmin }: {
 
   return (
     <div className="space-y-4">
-      {/* Search + filter */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." className="w-full bg-muted border border-border pl-8 pr-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           {(["all", "video", "image", "audio", "embed"] as const).map(t => (
             <button key={t} onClick={() => setFilterType(t)} className={`font-mono text-[9px] tracking-widest uppercase px-2 py-1.5 border transition-colors ${filterType === t ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>
-              {t === "all" ? "Todos" : t === "embed" ? "YT" : t}
+              {t === "all" ? "Todos" : t === "embed" ? "YT/VM" : t}
             </button>
           ))}
         </div>
       </div>
-
-      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
-        {projectItems.length + (filterType === "all" || filterType === "audio" ? audioItems.length : 0)} itens
-      </div>
-
-      {/* Grid */}
+      <div className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">{projectItems.length + (filterType === "all" || filterType === "audio" ? audioItems.length : 0)} itens</div>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {projectItems.map(p => (
           <div key={p.id} className="relative border border-border overflow-hidden group">
             <div className="aspect-video bg-card">
               {p.mediaType === "video" && <video src={p.mediaUrl} muted className="w-full h-full object-cover" />}
-              {p.mediaType === "embed" && p.thumbUrl && <img src={p.thumbUrl} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+              {p.mediaType === "embed" && p.thumbUrl && <img src={p.thumbUrl} alt="" className="w-full h-full object-cover" />}
               {p.mediaType === "embed" && !p.thumbUrl && <div className="w-full h-full flex items-center justify-center"><Youtube size={16} className="text-red-400" /></div>}
-              {p.mediaType === "image" && <img src={p.mediaUrl} alt="" className="w-full h-full object-cover" />}
+              {p.mediaType === "image" && <img src={(p.images?.[0] ?? p.mediaUrl)} alt="" className="w-full h-full object-cover" loading="lazy" />}
             </div>
             <div className="p-2">
               <p className="text-xs font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{p.title}</p>
               <div className="flex items-center justify-between mt-1">
-                <span className="font-mono text-[9px] text-muted-foreground uppercase">{p.mediaType}</span>
-                {showAdmin && <button onClick={() => onDeleteProject(p.id)} className="text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={10} /></button>}
+                <span className="font-mono text-[9px] text-muted-foreground uppercase">{p.mediaType}{p.images && p.images.length > 1 ? ` ×${p.images.length}` : ""}</span>
+                <button onClick={() => onDeleteProject(p.id)} className="text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={10} /></button>
               </div>
             </div>
           </div>
@@ -1393,13 +1558,12 @@ function MediaLibraryTab({ cms, onDeleteProject, onDeleteAudio, showAdmin }: {
               <p className="text-xs font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{a.title}</p>
               <div className="flex items-center justify-between mt-1">
                 <span className="font-mono text-[9px] text-muted-foreground uppercase">áudio</span>
-                {showAdmin && <button onClick={() => onDeleteAudio(a.id)} className="text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={10} /></button>}
+                <button onClick={() => onDeleteAudio(a.id)} className="text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={10} /></button>
               </div>
             </div>
           </div>
         ))}
       </div>
-
       {projectItems.length === 0 && audioItems.length === 0 && (
         <div className="border border-dashed border-border py-10 text-center">
           <Library size={18} className="text-muted-foreground mx-auto mb-2" />
@@ -1427,25 +1591,24 @@ function GitHubConfigTab({ ghConfig, onSave, onClear, onPublish, onSync, cms, sa
   const [testResult, setTestResult] = useState<{ ok: boolean; name?: string; error?: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<boolean | null>(null);
-
-  const hasToken = !!ghConfig?.token;
-  const configComplete = !!ghConfig && hasToken;
-
-  const handleSync = async () => {
-    setSyncing(true); setSyncResult(null);
-    const ok = await onSync();
-    setSyncResult(ok); setSyncing(false);
-    setTimeout(() => setSyncResult(null), 4000);
-  };
+  const configComplete = !!ghConfig && !!ghConfig.token;
 
   return (
     <div className="space-y-4">
+      {/* Architecture note */}
+      <div className="border border-green-500/20 bg-green-500/5 p-4 text-xs text-green-300/80 font-light space-y-1">
+        <div className="font-mono text-[10px] text-green-400 uppercase tracking-widest mb-2">Arquitetura Segura</div>
+        <p>Conteúdo salvo em <code className="text-green-300">cms/data.json</code> — fora do <code className="text-green-300">public/</code>.</p>
+        <p>Commits do Figma Make <strong>nunca sobrescrevem</strong> este arquivo. Apenas o admin pode alterar.</p>
+        <p>Uploads em <code className="text-green-300">public/uploads/</code> também são preservados.</p>
+      </div>
+
       {/* Sync */}
       <div className="border border-primary/20 bg-primary/5 p-4">
         <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-1">Sincronizar do GitHub</div>
-        <p className="text-xs text-muted-foreground font-light mb-3">Recarrega o conteúdo do repositório. Use sempre após um commit pelo Figma — garante que seus uploads não sejam apagados.</p>
+        <p className="text-xs text-muted-foreground font-light mb-3">Recarrega o CMS do repositório. Use sempre após um commit via Figma.</p>
         <div className="flex items-center gap-3 flex-wrap">
-          <button onClick={handleSync} disabled={!ghConfig?.owner || syncing} className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs tracking-widest uppercase border transition-all ${!ghConfig?.owner ? "border-border text-muted-foreground opacity-50 cursor-not-allowed" : "border-primary text-primary hover:bg-primary hover:text-background"}`}>
+          <button onClick={async () => { setSyncing(true); setSyncResult(null); const ok = await onSync(); setSyncResult(ok); setSyncing(false); setTimeout(() => setSyncResult(null), 4000); }} disabled={!ghConfig?.owner || syncing} className={`flex items-center gap-2 px-4 py-2.5 font-bold text-xs tracking-widest uppercase border transition-all ${!ghConfig?.owner ? "border-border text-muted-foreground opacity-50 cursor-not-allowed" : "border-primary text-primary hover:bg-primary hover:text-background"}`}>
             {syncing ? <><Loader2 size={12} className="animate-spin" />Sincronizando...</> : <><RefreshCw size={12} />Sincronizar</>}
           </button>
           {syncResult === true && <span className="flex items-center gap-1.5 font-mono text-[10px] text-green-400"><CheckCircle2 size={11} />Atualizado!</span>}
@@ -1456,21 +1619,19 @@ function GitHubConfigTab({ ghConfig, onSave, onClear, onPublish, onSync, cms, sa
       {/* Publish */}
       <div className="border border-border p-4">
         <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-2">Publicar → GitHub → Vercel</div>
-        <p className="text-xs text-muted-foreground font-light mb-3">Salva todas as alterações. A Vercel detecta o commit e faz deploy automaticamente.</p>
+        <p className="text-xs text-muted-foreground font-light mb-3">Salva em <code>cms/data.json</code>. Vercel faz deploy automaticamente.</p>
         <div className="flex items-center gap-3 flex-wrap">
           <button onClick={onPublish} disabled={!configComplete || saveStatus === "saving"} className={`flex items-center gap-2 px-5 py-2.5 font-bold text-xs tracking-widest uppercase transition-all ${!configComplete ? "bg-muted text-muted-foreground cursor-not-allowed" : saveStatus === "saving" ? "bg-primary/60 text-background" : "bg-primary text-background"}`}>
             {saveStatus === "saving" ? <><Loader2 size={12} className="animate-spin" />Publicando...</> : <><Github size={12} />Publicar agora</>}
           </button>
-          {saveStatus === "success" && <span className="flex items-center gap-1.5 font-mono text-[10px] text-green-400"><CheckCircle2 size={11} />Publicado! Deploy em ~2 min...</span>}
+          {saveStatus === "success" && <span className="flex items-center gap-1.5 font-mono text-[10px] text-green-400"><CheckCircle2 size={11} />Publicado! ~2 min...</span>}
           {saveStatus === "error" && saveError && <span className="font-mono text-[10px] text-red-400 max-w-[200px] flex items-center gap-1"><AlertCircle size={11} />{saveError}</span>}
         </div>
-        {!ghConfig && <p className="font-mono text-[10px] text-amber-400 mt-2">Configure o GitHub abaixo.</p>}
-        {ghConfig && !hasToken && <p className="font-mono text-[10px] text-amber-400 mt-2">Token ausente — preencha abaixo.</p>}
       </div>
 
       {/* Config */}
       <div className="border border-border p-4 space-y-3">
-        <div className="font-mono text-[10px] text-primary tracking-widest uppercase">Configuração</div>
+        <div className="font-mono text-[10px] text-primary tracking-widest uppercase">Configuração do Repositório</div>
         {ghConfig && <div className="flex items-center gap-2 text-[10px] font-mono"><span className={`w-2 h-2 rounded-full ${configComplete ? "bg-green-500" : "bg-amber-500"}`} /><span className="text-muted-foreground">{ghConfig.owner}/{ghConfig.repo} ({ghConfig.branch})</span></div>}
         <div className="grid grid-cols-2 gap-2">
           <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Usuário / Org</label><input value={owner} onChange={e => setOwner(e.target.value)} className="w-full bg-muted border border-border px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
@@ -1480,14 +1641,15 @@ function GitHubConfigTab({ ghConfig, onSave, onClear, onPublish, onSync, cms, sa
         <div>
           <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Token (PAT) — só nesta sessão</label>
           <div className="relative"><input type={showToken ? "text" : "password"} value={token} onChange={e => setToken(e.target.value)} className="w-full bg-muted border border-border px-3 py-2.5 pr-10 text-sm text-foreground focus:outline-none focus:border-primary" />
-            <button onClick={() => setShowToken(!showToken)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{showToken ? <Eye size={14} /> : <EyeOff size={14} />}</button></div>
-          <p className="font-mono text-[9px] text-muted-foreground/50 mt-1">Usuário/repo/branch ficam salvos no localStorage. Token apaga ao fechar o browser.</p>
+            <button onClick={() => setShowToken(!showToken)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">{showToken ? <Eye size={14} /> : <EyeOff size={14} />}</button>
+          </div>
+          <p className="font-mono text-[9px] text-muted-foreground/50 mt-1">owner/repo/branch → localStorage. Token → sessionStorage (apaga ao fechar).</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={async () => { setTesting(true); setTestResult(null); const r = await ghTestConnection({ owner, repo, branch, token }); setTestResult(r); setTesting(false); }} disabled={!owner || !repo || !token || testing} className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] tracking-widest uppercase text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-50">
             {testing ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}Testar
           </button>
-          <button onClick={() => onSave({ owner, repo, branch, token })} disabled={!owner || !repo || !token} className="flex items-center gap-2 bg-primary text-background px-4 py-2 font-bold text-[10px] tracking-widest uppercase disabled:opacity-50 disabled:cursor-not-allowed">
+          <button onClick={() => onSave({ owner, repo, branch, token })} disabled={!owner || !repo || !token} className="flex items-center gap-2 bg-primary text-background px-4 py-2 font-bold text-[10px] tracking-widest uppercase disabled:opacity-50">
             <Check size={10} />Salvar
           </button>
           {ghConfig && <button onClick={onClear} className="font-mono text-[10px] text-red-400 tracking-widest uppercase">Limpar</button>}
@@ -1507,7 +1669,7 @@ function GitHubConfigTab({ ghConfig, onSave, onClear, onPublish, onSync, cms, sa
    ADMIN PANEL
 ═══════════════════════════════════════════════════════════════════ */
 
-type AdminTab = "github" | "midias" | "uploads" | "textos" | "cores" | "info" | "logs";
+type AdminTab = "github" | "midias" | "uploads" | "textos" | "servicos" | "cores" | "info" | "logs";
 
 function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFile, syncFromGitHub, ghConfig, setGhConfig, clearGhConfig, saveStatus, saveError, logs, onOpenUpload }: {
   open: boolean; onClose: () => void; cms: CMSData; setCms: (d: CMSData) => void;
@@ -1543,9 +1705,12 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
     : setCms({ ...cms, hiddenSeeds: [...cms.hiddenSeeds, id], pinned: cms.pinned.filter(p => p !== id) });
 
   const delUpload = async (id: string) => {
-    if (!confirm("Remover?")) return;
+    if (!confirm("Remover projeto?")) return;
     const p = cms.projects.find(p => p.id === id);
-    if (p) { if (p.mediaUrl.startsWith("/uploads/")) await deleteFile(p.mediaUrl); if (p.thumbUrl?.startsWith("/uploads/")) await deleteFile(p.thumbUrl); }
+    if (p) {
+      const allUrls = [p.mediaUrl, p.thumbUrl, ...(p.images ?? [])].filter(Boolean) as string[];
+      for (const u of allUrls) { if (u.startsWith("/uploads/")) await deleteFile(u); }
+    }
     setCms({ ...cms, projects: cms.projects.filter(p => p.id !== id), pinned: cms.pinned.filter(p => p !== id) });
   };
 
@@ -1563,33 +1728,43 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
 
   const updContent = (k: keyof SiteContent, v: string) => setCms({ ...cms, content: { ...cms.content, [k]: v } });
   const updTheme = (k: keyof SiteTheme, v: string) => setCms({ ...cms, theme: { ...cms.theme, [k]: v } });
+  const updService = (i: number, k: keyof CMSServiceContent, v: string | string[]) => {
+    const updated = cms.services.map((s, idx) => idx === i ? { ...s, [k]: v } : s);
+    setCms({ ...cms, services: updated });
+  };
+  const updAdvantage = (i: number, k: keyof CMSAdvantageContent, v: string) => {
+    const updated = cms.advantages.map((a, idx) => idx === i ? { ...a, [k]: v } : a);
+    setCms({ ...cms, advantages: updated });
+  };
 
   const TABS: { id: AdminTab; icon: ReactNode; label: string }[] = [
     { id: "github", icon: <Github size={12} />, label: "GitHub" },
     { id: "midias", icon: <Library size={12} />, label: "Mídias" },
     { id: "uploads", icon: <FolderOpen size={12} />, label: "Uploads" },
     { id: "textos", icon: <FileText size={12} />, label: "Textos" },
+    { id: "servicos", icon: <Sparkles size={12} />, label: "Serviços" },
     { id: "cores", icon: <Paintbrush size={12} />, label: "Cores" },
     { id: "info", icon: <Info size={12} />, label: "Info" },
-    { id: "logs", icon: <ScrollText size={12} />, label: `Logs${logs.length ? ` (${logs.length})` : ""}` },
+    { id: "logs", icon: <ScrollText size={12} />, label: `Logs${logs.length ? `(${logs.length})` : ""}` },
   ];
 
   const contentFields: { k: keyof SiteContent; l: string; m?: boolean }[] = [
-    { k: "heroLine1", l: "Hero L1" }, { k: "heroLine2", l: "Hero L2" }, { k: "heroLine3", l: "Hero L3" }, { k: "heroLine4", l: "Hero L4 (outline)" },
-    { k: "heroBadge", l: "Badge" }, { k: "heroSubtitle", l: "Subtítulo", m: true },
-    { k: "stat1Val", l: "Stat 1 Val" }, { k: "stat1Label", l: "Stat 1 Label" },
-    { k: "stat2Val", l: "Stat 2 Val" }, { k: "stat2Label", l: "Stat 2 Label" },
-    { k: "stat3Val", l: "Stat 3 Val" }, { k: "stat3Label", l: "Stat 3 Label" },
-    { k: "stat4Val", l: "Stat 4 Val" }, { k: "stat4Label", l: "Stat 4 Label" },
-    { k: "difHeading1", l: "Dif. L1" }, { k: "difHeading2", l: "Dif. L2" }, { k: "difHeading3", l: "Dif. L3" },
-    { k: "difSubtext", l: "Dif. Parágrafo", m: true },
+    { k: "heroLine1", l: "Hero Linha 1" }, { k: "heroLine2", l: "Hero Linha 2" }, { k: "heroLine3", l: "Hero Linha 3" }, { k: "heroLine4", l: "Hero Linha 4 (outline)" },
+    { k: "heroBadge", l: "Badge (disponível)" }, { k: "heroSubtitle", l: "Subtítulo hero", m: true },
+    { k: "stat1Val", l: "Stat 1 Valor" }, { k: "stat1Label", l: "Stat 1 Label" },
+    { k: "stat2Val", l: "Stat 2 Valor" }, { k: "stat2Label", l: "Stat 2 Label" },
+    { k: "stat3Val", l: "Stat 3 Valor" }, { k: "stat3Label", l: "Stat 3 Label" },
+    { k: "stat4Val", l: "Stat 4 Valor" }, { k: "stat4Label", l: "Stat 4 Label" },
+    { k: "servicesHeading1", l: "Serviços Título L1" }, { k: "servicesHeading2", l: "Serviços Título L2" },
+    { k: "difHeading1", l: "Diferenciais L1" }, { k: "difHeading2", l: "Diferenciais L2" }, { k: "difHeading3", l: "Diferenciais L3" },
+    { k: "difSubtext", l: "Diferenciais Parágrafo", m: true },
     { k: "contactHeading", l: "Contato Título" }, { k: "contactSubtext", l: "Contato Sub", m: true },
     { k: "footerCopy", l: "Rodapé" },
   ];
 
   const themeFields: { k: keyof SiteTheme; l: string }[] = [
     { k: "primary", l: "Destaque (laranja)" }, { k: "background", l: "Fundo" },
-    { k: "foreground", l: "Texto" }, { k: "card", l: "Cards" }, { k: "muted", l: "Superfície sec." },
+    { k: "foreground", l: "Texto principal" }, { k: "card", l: "Cards" }, { k: "muted", l: "Superfície secundária" },
   ];
 
   return (
@@ -1600,7 +1775,7 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
           <div className="flex items-center gap-2">
             <Settings size={14} className="text-primary" />
             <span className="font-mono text-[10px] text-primary tracking-widest uppercase">Painel Admin</span>
-            {!ghOk && <span className="font-mono text-[9px] text-amber-400 border border-amber-500/30 px-1.5 py-0.5 uppercase">Token ausente</span>}
+            {!ghOk && <span className="font-mono text-[9px] text-amber-400 border border-amber-500/30 px-1.5 py-0.5 uppercase">Sem token</span>}
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => { onClose(); onOpenUpload(); }} className="flex items-center gap-1.5 px-3 py-1.5 font-bold text-[10px] tracking-widest uppercase bg-primary text-background"><Plus size={10} />Upload</button>
@@ -1620,7 +1795,7 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
 
           {tab === "github" && <GitHubConfigTab ghConfig={ghConfig} onSave={setGhConfig} onClear={clearGhConfig} onPublish={() => publish(cms)} onSync={syncFromGitHub} cms={cms} saveStatus={saveStatus} saveError={saveError} />}
 
-          {tab === "midias" && <MediaLibraryTab cms={cms} onDeleteProject={delUpload} onDeleteAudio={delAudio} showAdmin={true} />}
+          {tab === "midias" && <MediaLibraryTab cms={cms} onDeleteProject={delUpload} onDeleteAudio={delAudio} />}
 
           {tab === "uploads" && (
             <div className="space-y-4">
@@ -1639,7 +1814,7 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
                       </div>
                       <div className="flex flex-col gap-1">
                         {!hidden && <button onClick={() => togglePin(p.id)} className={`font-mono text-[9px] px-2 py-1 border ${isPin ? "border-primary text-primary" : "border-border text-muted-foreground"}`}><Pin size={8} /></button>}
-                        <button onClick={() => toggleHide(p.id)} className={`font-mono text-[9px] px-2 py-1 border ${hidden ? "border-green-500/40 text-green-400" : "border-red-500/40 text-red-400"}`}>{hidden ? "↑" : <Trash2 size={8} />}</button>
+                        <button onClick={() => toggleHide(p.id)} className={`font-mono text-[9px] px-2 py-1 border ${hidden ? "border-green-500/40 text-green-400" : "border-red-500/40 text-red-400"}`}>{hidden ? "↑ Mostrar" : <Trash2 size={8} />}</button>
                       </div>
                     </div>
                   );
@@ -1648,7 +1823,7 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
 
               {/* GitHub uploads */}
               <div>
-                <div className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 bg-green-500" />GitHub uploads ({cms.projects.length})</div>
+                <div className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 bg-green-500" />Uploads GitHub ({cms.projects.length})</div>
                 {cms.projects.length === 0
                   ? <div className="border border-dashed border-border py-10 flex flex-col items-center gap-3"><Upload size={18} className="text-muted-foreground" /><p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">Nenhum upload</p><button onClick={() => { onClose(); onOpenUpload(); }} className="flex items-center gap-2 bg-primary text-background px-4 py-2 font-bold text-xs tracking-widest uppercase"><Plus size={10} />Primeiro upload</button></div>
                   : cms.projects.map(p => {
@@ -1664,14 +1839,15 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
                               </div>
                             : <div className="flex items-center gap-2 p-2">
                                 <div className="w-12 h-9 flex-shrink-0 bg-card overflow-hidden relative">
-                                  {isEmbed && p.thumbUrl && <img src={p.thumbUrl} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+                                  {isEmbed && p.thumbUrl && <img src={p.thumbUrl} alt="" className="w-full h-full object-cover" />}
                                   {isEmbed && !p.thumbUrl && <div className="w-full h-full flex items-center justify-center"><Youtube size={12} className="text-red-400" /></div>}
                                   {!isEmbed && p.mediaType === "video" && <video src={p.mediaUrl} muted className="w-full h-full object-cover" />}
-                                  {!isEmbed && p.mediaType === "image" && <img src={p.thumbUrl ?? p.mediaUrl} alt="" className="w-full h-full object-cover" />}
+                                  {!isEmbed && p.mediaType === "image" && <img src={(p.images?.[0] ?? p.thumbUrl ?? p.mediaUrl)} alt="" className="w-full h-full object-cover" loading="lazy" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="text-sm font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{p.title}</div>
                                   <span className={`font-mono text-[9px] uppercase ${isPin ? "text-primary" : "text-muted-foreground"}`}>{isPin ? "● Destaque" : "○ Galeria"}</span>
+                                  {p.images && p.images.length > 1 && <span className="font-mono text-[9px] text-muted-foreground ml-2">×{p.images.length} imagens</span>}
                                 </div>
                                 <div className="flex gap-1">
                                   <button onClick={() => togglePin(p.id)} className={`font-mono text-[9px] px-2 py-1 border ${isPin ? "border-primary text-primary" : "border-border text-muted-foreground"}`}><Pin size={8} /></button>
@@ -1684,11 +1860,11 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
                     })}
               </div>
 
-              {/* Audio uploads */}
+              {/* Audio */}
               <div>
-                <div className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 bg-green-400" />Produções fonográficas ({cms.audios.length})</div>
+                <div className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 bg-green-400" />Produções Fonográficas ({cms.audios.length})</div>
                 {cms.audios.length === 0
-                  ? <p className="font-mono text-[10px] text-muted-foreground tracking-widest">Nenhuma faixa — upload via botão acima (aba Áudio)</p>
+                  ? <p className="font-mono text-[10px] text-muted-foreground tracking-widest">Nenhuma — upload via botão acima (aba Áudio)</p>
                   : cms.audios.map(a => (
                     <div key={a.id} className="border border-border flex items-center gap-2 p-2 mb-1">
                       <div className="w-10 h-10 flex-shrink-0 overflow-hidden border border-border">
@@ -1707,7 +1883,7 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
 
           {tab === "textos" && (
             <div className="space-y-3">
-              <p className="font-mono text-[10px] text-muted-foreground">Edite e clique Publicar (aba GitHub) para salvar em todos os dispositivos.</p>
+              <p className="font-mono text-[10px] text-muted-foreground">Edite e clique Publicar (aba GitHub) para salvar.</p>
               {contentFields.map(({ k, l, m }) => (
                 <div key={k}>
                   <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">{l}</label>
@@ -1718,9 +1894,33 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
             </div>
           )}
 
+          {tab === "servicos" && (
+            <div className="space-y-6">
+              <p className="font-mono text-[10px] text-muted-foreground">Edite os serviços e vantagens. Publique para salvar.</p>
+              {cms.services.map((s, i) => (
+                <div key={i} className="border border-border p-4 space-y-3">
+                  <div className="font-mono text-[10px] text-primary uppercase tracking-widest">Serviço {i + 1} — {SERVICE_NUMBERS[i]}</div>
+                  <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Título</label><input value={s.title} onChange={e => updService(i, "title", e.target.value)} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
+                  <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Descrição</label><textarea value={s.description} onChange={e => updService(i, "description", e.target.value)} rows={3} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary resize-none" /></div>
+                  <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Tags (separadas por vírgula)</label><input value={s.tags.join(", ")} onChange={e => updService(i, "tags", e.target.value.split(",").map(t => t.trim()).filter(Boolean))} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
+                </div>
+              ))}
+              <div className="border-t border-border pt-4">
+                <div className="font-mono text-[10px] text-primary uppercase tracking-widest mb-3">Vantagens — "Por que eu?"</div>
+                {cms.advantages.map((a, i) => (
+                  <div key={i} className="border border-border p-4 space-y-2 mb-2">
+                    <div className="font-mono text-[10px] text-muted-foreground uppercase">Vantagem {i + 1}</div>
+                    <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Título</label><input value={a.title} onChange={e => updAdvantage(i, "title", e.target.value)} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
+                    <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Texto</label><textarea value={a.body} onChange={e => updAdvantage(i, "body", e.target.value)} rows={2} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary resize-none" /></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {tab === "cores" && (
             <div className="space-y-3">
-              <p className="font-mono text-[10px] text-muted-foreground">Aplica imediatamente. Publique para sincronizar.</p>
+              <p className="font-mono text-[10px] text-muted-foreground">Aplica imediatamente. Publique para persistir.</p>
               {themeFields.map(({ k, l }) => (
                 <div key={k} className="flex items-center gap-3 border border-border p-3">
                   <input type="color" value={cms.theme[k].startsWith("rgba") ? "#1a1e2b" : cms.theme[k]} onChange={e => updTheme(k, e.target.value)} className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent flex-shrink-0" />
@@ -1733,10 +1933,13 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
 
           {tab === "info" && (
             <div className="space-y-4">
-              <div className="border border-green-500/20 bg-green-500/5 p-4"><div className="font-mono text-[10px] text-green-400 uppercase tracking-widest mb-2">Arquitetura</div><p className="text-sm text-muted-foreground font-light">Conteúdo em <code className="text-primary">public/cms-data.json</code> no GitHub. Mídias em <code className="text-primary">public/uploads/</code>. Vercel republica a cada commit.</p></div>
-              <div className="border border-border p-4 space-y-1.5">{["1. Login → painel Admin", "2. Aba GitHub → Configurar → Salvar", "3. Edite textos, cores, faça uploads", "4. Publicar agora", "5. ~2 min → Vercel publica", "6. Todos os dispositivos veem o conteúdo"].map((s, i) => <p key={i} className="text-sm text-muted-foreground font-light">{s}</p>)}</div>
+              <div className="border border-green-500/20 bg-green-500/5 p-4">
+                <div className="font-mono text-[10px] text-green-400 uppercase tracking-widest mb-2">Proteção de Conteúdo</div>
+                <p className="text-sm text-muted-foreground font-light">CMS salvo em <code className="text-primary">cms/data.json</code> — arquivo fora do <code className="text-primary">public/</code>. Commits do Figma Make <strong>não tocam</strong> este arquivo.</p>
+                <p className="text-sm text-muted-foreground font-light mt-2">Uploads em <code className="text-primary">public/uploads/</code> também são preservados pois Figma Make não gerencia esses arquivos.</p>
+              </div>
+              <div className="border border-border p-4 space-y-1.5">{["1. Configure GitHub (aba GitHub)", "2. Clique Publicar após qualquer edição", "3. Vercel faz deploy em ~2 min", "4. Após commits do Figma, clique Sincronizar", "5. Seu conteúdo nunca se perde"].map((s, i) => <p key={i} className="text-sm text-muted-foreground font-light">{s}</p>)}</div>
               <div className="border border-amber-500/20 bg-amber-500/5 p-4"><div className="font-mono text-[10px] text-amber-400 uppercase tracking-widest mb-2">Limite de Upload</div><p className="text-sm text-amber-200/70 font-light">Arquivos até <strong>25 MB</strong> via GitHub API. Vídeos maiores: YouTube ou Vimeo.</p></div>
-              <div className="border border-red-500/20 bg-red-500/5 p-4"><div className="font-mono text-[10px] text-red-400 uppercase tracking-widest mb-2">Segurança</div><p className="text-sm text-red-200/70 font-light">Deploys via Figma Make nunca apagam conteúdo do GitHub — o app sempre lê da API antes de qualquer commit.</p></div>
             </div>
           )}
 
@@ -1744,7 +1947,7 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
         </div>
 
         <div className="border-t border-border px-5 py-3 flex items-center justify-between flex-shrink-0">
-          <span className="font-mono text-[10px] text-muted-foreground">{ALL_SEEDS.length + cms.projects.length} proj · {cms.audios.length} áudio · {new Set(cms.pinned).size} destaque{!ghOk ? " · ⚠ sem token" : ""}</span>
+          <span className="font-mono text-[10px] text-muted-foreground">{ALL_SEEDS.length + cms.projects.length} proj · {cms.audios.length} áudio · {!ghOk ? "⚠ sem token" : "✓ GitHub ok"}</span>
           <button onClick={onClose} className="font-mono text-xs text-muted-foreground uppercase tracking-widest">Fechar</button>
         </div>
       </div>
@@ -1760,7 +1963,7 @@ function PortfolioApp() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeService, setActiveService] = useState(0);
-  const [galleryService, setGalleryService] = useState<typeof SERVICES[number] | null>(null);
+  const [galleryService, setGalleryService] = useState<{ number: string; title: string; icon: ReactNode; galleryCategories: string[] } | null>(null);
   const [galleryInitialItem, setGalleryInitialItem] = useState<DisplayProject | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -1778,6 +1981,18 @@ function PortfolioApp() {
   const featuredProjects = allProjects.filter(p => pinned.has(p.id));
   const ghOk = !!ghConfig?.token;
 
+  // Build service list from CMS data
+  const services = cms.services.map((s, i) => ({
+    number: SERVICE_NUMBERS[i] ?? `0${i + 1}`,
+    icon: SERVICE_ICONS[i] ?? <Sparkles size={24} />,
+    title: s.title,
+    description: s.description,
+    tags: s.tags,
+    galleryCategories: SERVICE_CATEGORIES[i] ?? [s.title],
+  }));
+
+  const advantages = cms.advantages.map((a, i) => ({ num: `0${i + 1}`, title: a.title, body: a.body }));
+
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", fn, { passive: true }); return () => window.removeEventListener("scroll", fn);
@@ -1787,7 +2002,7 @@ function PortfolioApp() {
   const logout = () => { sessionStorage.removeItem(SESSION_KEY); setAdminMode(false); setAdminOpen(false); toast.info("Admin deslogado."); addLog("info", "Admin deslogado."); };
 
   const openProjectGallery = (item: DisplayProject) => {
-    const svc = SERVICES.find(s => s.galleryCategories.includes(item.category));
+    const svc = services.find(s => s.galleryCategories.includes(item.category));
     if (svc) { setGalleryService(svc); setGalleryInitialItem(item); }
   };
 
@@ -1803,7 +2018,10 @@ function PortfolioApp() {
 
   const handleDeleteProject = async (id: string) => {
     const p = cms.projects.find(p => p.id === id);
-    if (p) { if (p.mediaUrl.startsWith("/uploads/")) await deleteFile(p.mediaUrl); if (p.thumbUrl?.startsWith("/uploads/")) await deleteFile(p.thumbUrl); }
+    if (p) {
+      const allUrls = [p.mediaUrl, p.thumbUrl, ...(p.images ?? [])].filter(Boolean) as string[];
+      for (const u of allUrls) { if (u.startsWith("/uploads/")) await deleteFile(u); }
+    }
     await publish({ ...cms, projects: cms.projects.filter(p => p.id !== id), pinned: cms.pinned.filter(p => p !== id) });
   };
 
@@ -1829,7 +2047,7 @@ function PortfolioApp() {
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSave={handleAddProject} onSaveAudio={handleAddAudio} uploadFile={uploadFile} ghConfigured={ghOk} />
       <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} />
 
-      {/* Scroll bar */}
+      {/* Progress bar */}
       <div className="fixed top-0 left-0 h-[2px] bg-primary z-[100]" style={{ width: `${progress * 100}%`, transition: "width 60ms linear" }} />
 
       {/* Admin FAB */}
@@ -1864,10 +2082,16 @@ function PortfolioApp() {
         </div>
       </nav>
 
-      {/* HERO */}
+      {/* ── HERO ── */}
       <section id="hero" className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
-          <video src={heroVideo} autoPlay muted loop playsInline className="w-full h-full object-cover" style={{ objectPosition: "30% top" }} />
+          {/* Mobile: persona mais à direita (70%); Desktop: posição clássica (30%) */}
+          <style>{`#hero-video { object-position: 70% top; } @media (min-width: 768px) { #hero-video { object-position: 30% top; } }`}</style>
+          <video
+            id="hero-video"
+            src={heroVideo} autoPlay muted loop playsInline
+            className="w-full h-full object-cover"
+          />
           <div className="absolute inset-0 bg-background/65" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/25 via-background/15 to-background" />
         </div>
@@ -1901,19 +2125,23 @@ function PortfolioApp() {
             ))}
           </div>
         </div>
-        <button onClick={() => scrollTo("#servicos")} className="absolute bottom-4 left-1/2 -translate-x-1/2 text-muted-foreground"><ChevronDown size={16} className="animate-bounce" /></button>
+        <button onClick={() => scrollTo("#servicos")} className="absolute bottom-4 left-1/2 -translate-x-1/2 text-muted-foreground z-10"><ChevronDown size={16} className="animate-bounce" /></button>
       </section>
 
-      {/* SERVIÇOS */}
+      {/* ── SERVIÇOS ── */}
       <section id="servicos" className="py-16 md:py-28">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
           <FadeIn><SectionLabel>Serviços</SectionLabel></FadeIn>
-          <FadeIn delay={60}><h2 className="text-4xl md:text-7xl font-black uppercase text-foreground leading-none mb-10 md:mb-16" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>O que posso<br /><span className="text-primary">fazer por você?</span></h2></FadeIn>
+          <FadeIn delay={60}>
+            <h2 className="text-4xl md:text-7xl font-black uppercase text-foreground leading-none mb-10 md:mb-16" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
+              {content.servicesHeading1}<br /><span className="text-primary">{content.servicesHeading2}</span>
+            </h2>
+          </FadeIn>
 
-          {/* Desktop */}
+          {/* Desktop grid */}
           <div className="hidden md:grid grid-cols-[220px_1fr] border border-border">
             <div className="border-r border-border">
-              {SERVICES.map((s, i) => (
+              {services.map((s, i) => (
                 <button key={s.number} onClick={() => setActiveService(i)} className={`w-full text-left px-6 py-5 border-b border-border last:border-b-0 transition-all ${activeService === i ? "bg-primary/8" : "hover:bg-muted/40"}`}>
                   <div className={`font-mono text-[10px] tracking-widest uppercase mb-1 ${activeService === i ? "text-primary" : "text-muted-foreground"}`}>{s.number}</div>
                   <div className={`text-lg font-black uppercase leading-tight ${activeService === i ? "text-primary" : "text-foreground"}`} style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{s.title}</div>
@@ -1922,20 +2150,20 @@ function PortfolioApp() {
               ))}
             </div>
             <div className="p-10">
-              <div className="text-primary mb-5">{SERVICES[activeService].icon}</div>
-              <h3 className="text-4xl font-black uppercase text-foreground mb-4 leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{SERVICES[activeService].title}</h3>
-              <p className="text-muted-foreground text-base leading-relaxed font-light mb-8">{SERVICES[activeService].description}</p>
-              <div className="flex flex-wrap gap-2 mb-8">{SERVICES[activeService].tags.map(t => <span key={t} className="font-mono text-[10px] tracking-widest uppercase border border-border text-muted-foreground px-3 py-1.5 hover:border-primary hover:text-primary transition-colors">{t}</span>)}</div>
+              <div className="text-primary mb-5">{services[activeService]?.icon}</div>
+              <h3 className="text-4xl font-black uppercase text-foreground mb-4 leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{services[activeService]?.title}</h3>
+              <p className="text-muted-foreground text-base leading-relaxed font-light mb-8">{services[activeService]?.description}</p>
+              <div className="flex flex-wrap gap-2 mb-8">{services[activeService]?.tags.map(t => <span key={t} className="font-mono text-[10px] tracking-widest uppercase border border-border text-muted-foreground px-3 py-1.5 hover:border-primary hover:text-primary transition-colors">{t}</span>)}</div>
               <div className="flex flex-wrap items-center gap-6">
-                <button onClick={() => { setGalleryService(SERVICES[activeService]); setGalleryInitialItem(null); }} className="inline-flex items-center gap-2 bg-primary text-background px-6 py-2.5 font-bold text-xs tracking-widest uppercase hover:bg-primary/85 transition-colors">Ver galeria <Film size={13} /></button>
+                <button onClick={() => { setGalleryService(services[activeService]); setGalleryInitialItem(null); }} className="inline-flex items-center gap-2 bg-primary text-background px-6 py-2.5 font-bold text-xs tracking-widest uppercase hover:bg-primary/85 transition-colors">Ver galeria <Film size={13} /></button>
                 <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary font-semibold text-sm tracking-wider uppercase">Solicitar orçamento <ArrowUpRight size={15} /></a>
               </div>
             </div>
           </div>
 
-          {/* Mobile */}
+          {/* Mobile accordion */}
           <div className="md:hidden space-y-2">
-            {SERVICES.map((s, i) => {
+            {services.map((s, i) => {
               const open = activeService === i;
               return (
                 <FadeIn key={s.number} delay={i * 40}>
@@ -1966,7 +2194,7 @@ function PortfolioApp() {
         </div>
       </section>
 
-      {/* TRABALHOS — Netflix carousels */}
+      {/* ── TRABALHOS ── */}
       <section id="trabalhos" className="py-16 md:py-24 bg-background overflow-hidden">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
           <FadeIn><SectionLabel>Explorando Meu Trabalho</SectionLabel></FadeIn>
@@ -1975,7 +2203,6 @@ function PortfolioApp() {
             {adminMode && <FadeIn delay={100}><button onClick={() => setUploadOpen(true)} className="flex items-center gap-2 px-4 py-2.5 font-bold text-xs tracking-widest uppercase bg-primary text-background self-start sm:self-auto"><Plus size={13} />Adicionar</button></FadeIn>}
           </div>
 
-          {/* Featured */}
           {featuredProjects.length > 0 && (
             <FadeIn delay={80}>
               <div className="mb-10 md:mb-14">
@@ -1993,14 +2220,11 @@ function PortfolioApp() {
             </FadeIn>
           )}
 
-          {/* Category rows */}
           <FadeIn delay={120}>
             <div className="space-y-2">
               {CATEGORIES.map(cat => {
-                const items = allProjects.filter(p => p.category === cat);
-                return (
-                  <CarouselRow key={cat} label={cat} items={items} showAdmin={adminMode} pinned={pinned} onTogglePin={handleTogglePin} onDelete={handleDeleteProject} onClickItem={openProjectGallery} />
-                );
+                const catItems = allProjects.filter(p => p.category === cat);
+                return <CarouselRow key={cat} label={cat} items={catItems} showAdmin={adminMode} pinned={pinned} onTogglePin={handleTogglePin} onDelete={handleDeleteProject} onClickItem={openProjectGallery} />;
               })}
             </div>
           </FadeIn>
@@ -2015,29 +2239,34 @@ function PortfolioApp() {
         </div>
       </section>
 
-      {/* DIFERENCIAIS */}
+      {/* ── DIFERENCIAIS ── */}
       <section id="diferenciais" className="py-16 md:py-28">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
           <FadeIn><SectionLabel>Por que eu?</SectionLabel></FadeIn>
           <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-start">
             <FadeIn delay={60}>
-              <div>
-                <h2 className="text-4xl md:text-6xl font-black uppercase text-foreground leading-none mb-5" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
+              <div className="min-w-0">
+                {/* Heading — responsive clamp prevents overflow */}
+                <h2
+                  className="font-black uppercase text-foreground leading-none mb-5 break-words"
+                  style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "clamp(2rem, 8vw, 4rem)" }}
+                >
                   {content.difHeading1}<br />{content.difHeading2}<br /><span className="text-primary">{content.difHeading3}</span>
                 </h2>
-                <p className="text-muted-foreground font-light text-sm md:text-base leading-relaxed mb-6 md:mb-8">{content.difSubtext}</p>
-
-                {/* Audio carousel in Produção Fonográfica context */}
-                <AudioCarousel audios={cms.audios} showAdmin={adminMode} onDelete={handleDeleteAudio} ghConfigured={ghOk} />
+                <p className="text-muted-foreground font-light text-sm md:text-base leading-relaxed mb-6 md:mb-8 break-words">{content.difSubtext}</p>
+                <AudioCarousel audios={cms.audios} showAdmin={adminMode} onDelete={handleDeleteAudio} />
               </div>
             </FadeIn>
-            <div className="space-y-0">
-              {ADVANTAGES.map((adv, i) => (
+            <div className="space-y-0 min-w-0">
+              {advantages.map((adv, i) => (
                 <FadeIn key={adv.num} delay={80 + i * 60}>
                   <div className="border-b border-border py-5 md:py-7">
                     <div className="flex items-start gap-4 md:gap-5">
                       <span className="font-mono text-[10px] text-primary tracking-widest mt-1 flex-shrink-0">{adv.num}</span>
-                      <div><h3 className="text-lg md:text-xl font-black uppercase text-foreground mb-1 leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{adv.title}</h3><p className="text-sm text-muted-foreground font-light leading-relaxed">{adv.body}</p></div>
+                      <div className="min-w-0">
+                        <h3 className="text-lg md:text-xl font-black uppercase text-foreground mb-1 leading-tight break-words" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{adv.title}</h3>
+                        <p className="text-sm text-muted-foreground font-light leading-relaxed break-words">{adv.body}</p>
+                      </div>
                     </div>
                   </div>
                 </FadeIn>
@@ -2047,7 +2276,7 @@ function PortfolioApp() {
         </div>
       </section>
 
-      {/* STATS */}
+      {/* ── STATS ── */}
       <section className="border-y border-border bg-card/40 py-8 md:py-10">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border">
@@ -2061,16 +2290,14 @@ function PortfolioApp() {
         </div>
       </section>
 
-      {/* CONTATO */}
+      {/* ── CONTATO ── */}
       <section id="contato" className="py-16 md:py-28">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
           <FadeIn><SectionLabel>Contato</SectionLabel></FadeIn>
           <div className="grid md:grid-cols-2 gap-10 md:gap-16">
             <FadeIn delay={60}>
               <div>
-                <h2 className="text-4xl md:text-7xl font-black uppercase text-foreground leading-none mb-5" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
-                  {content.contactHeading}
-                </h2>
+                <h2 className="text-4xl md:text-7xl font-black uppercase text-foreground leading-none mb-5" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{content.contactHeading}</h2>
                 <p className="text-muted-foreground font-light text-sm md:text-base leading-relaxed mb-7">{content.contactSubtext}</p>
                 <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 bg-primary text-background px-7 py-4 font-black tracking-widest uppercase hover:bg-primary/85 transition-colors w-full sm:w-auto justify-center" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "1rem" }}>
                   <MessageCircle size={17} />Falar no WhatsApp
@@ -2095,7 +2322,7 @@ function PortfolioApp() {
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* ── FOOTER ── */}
       <footer className="border-t border-border py-6 md:py-8">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
           <div className="md:hidden flex flex-col items-center gap-4 text-center">

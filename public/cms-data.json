@@ -23,67 +23,16 @@
     "footerCopy": "© 2026 Frederico Pierre · Design · Motion Designer · Video Maker · Audiovisual"
   },
   "theme": {
-    "primary": "#960018",
+    "primary": "#E8863A",
     "background": "#07080F",
     "foreground": "#EDE9E2",
     "card": "#0F111A",
     "muted": "#1A1E2B",
     "border": "rgba(237,233,226,0.08)"
   },
-  "projects": [
-    {
-      "id": "proj-1785968121735",
-      "title": "Divulgaação reels",
-      "description": "",
-      "category": "Video Making",
-      "mediaType": "embed",
-      "mediaUrl": "https://www.youtube.com/embed/bhMiAN9TBz4",
-      "thumbUrl": "https://img.youtube.com/vi/bhMiAN9TBz4/hqdefault.jpg",
-      "embedPlatform": "youtube",
-      "embedId": "bhMiAN9TBz4",
-      "createdAt": 1785968121735
-    },
-    {
-      "id": "proj-1785967926965",
-      "title": "Anuncio Extra-FM",
-      "description": "",
-      "category": "Video Making",
-      "mediaType": "embed",
-      "mediaUrl": "https://www.youtube.com/embed/3tAAzTHiDc0",
-      "thumbUrl": "https://img.youtube.com/vi/3tAAzTHiDc0/hqdefault.jpg",
-      "embedPlatform": "youtube",
-      "embedId": "3tAAzTHiDc0",
-      "createdAt": 1785967926965
-    }
-  ],
-  "audios": [
-    {
-      "id": "audio-1785968559248",
-      "title": "Crazy Song",
-      "artist": "Freed Pierre",
-      "url": "/uploads/audio/1785968550142-Crazyyyy.mp3",
-      "coverUrl": "/uploads/images/1785968555861-DSC00171_copiar.jpg",
-      "createdAt": 1785968559248
-    },
-    {
-      "id": "audio-1785968342796",
-      "title": "Nice Bass",
-      "artist": "Freed Pierre",
-      "url": "/uploads/audio/1785968335715-Nice_Bass.mp3",
-      "coverUrl": "/uploads/images/1785968340457-Foto_IA.jpg",
-      "createdAt": 1785968342796
-    },
-    {
-      "id": "migrated-audio",
-      "title": "Me And My Crew Mix Estudo",
-      "url": "/uploads/audio/1785967609930-Me_And_My_Crew_Mix_Estudo.mp3",
-      "createdAt": 0
-    }
-  ],
-  "pinned": [
-    "proj-1785967926965",
-    "seed-pizza"
-  ],
+  "projects": [],
+  "pinned": [],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-05T22:25:36.913Z"
+  "audio": null,
+  "updatedAt": "2026-07-31T00:00:00.000Z"
 }
