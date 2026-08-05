@@ -58,6 +58,14 @@
   ],
   "audios": [
     {
+      "id": "audio-1785968559248",
+      "title": "Crazy Song",
+      "artist": "Freed Pierre",
+      "url": "/uploads/audio/1785968550142-Crazyyyy.mp3",
+      "coverUrl": "/uploads/images/1785968555861-DSC00171_copiar.jpg",
+      "createdAt": 1785968559248
+    },
+    {
       "id": "audio-1785968342796",
       "title": "Nice Bass",
       "artist": "Freed Pierre",
@@ -77,5 +85,5 @@
     "seed-pizza"
   ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-05T22:19:03.383Z"
+  "updatedAt": "2026-08-05T22:22:39.737Z"
 }
