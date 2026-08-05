@@ -32,6 +32,18 @@
   },
   "projects": [
     {
+      "id": "proj-1785968121735",
+      "title": "Divulgaação reels",
+      "description": "",
+      "category": "Video Making",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/bhMiAN9TBz4",
+      "thumbUrl": "https://img.youtube.com/vi/bhMiAN9TBz4/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "bhMiAN9TBz4",
+      "createdAt": 1785968121735
+    },
+    {
       "id": "proj-1785967926965",
       "title": "Anuncio Extra-FM",
       "description": "",
@@ -53,8 +65,9 @@
     }
   ],
   "pinned": [
-    "proj-1785967926965"
+    "proj-1785967926965",
+    "proj-1785968121735"
   ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-05T22:12:07.743Z"
+  "updatedAt": "2026-08-05T22:15:21.957Z"
 }
