@@ -33,7 +33,7 @@
   "projects": [
     {
       "id": "proj-1785943079552",
-      "title": "Propagando Extra FM",
+      "title": "Propaganda Extra FM",
       "description": "",
       "category": "Motion Design",
       "mediaType": "embed",
@@ -45,9 +45,10 @@
     }
   ],
   "pinned": [
-    "proj-1785943079552"
+    "proj-1785943079552",
+    "seed-pizza"
   ],
   "hiddenSeeds": [],
   "audio": null,
-  "updatedAt": "2026-08-05T15:18:43.304Z"
+  "updatedAt": "2026-08-05T15:50:29.381Z"
 }
