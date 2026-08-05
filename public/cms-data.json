@@ -1,11 +1,11 @@
 {
   "content": {
-    "heroLine1": "ONDE ÁUDIO",
+    "heroLine1": "ONDE ÁUDIO,",
     "heroLine2": "DESIGN",
     "heroLine3": "E MOVIMENTOS",
     "heroLine4": "SE ENCONTRAM",
     "heroBadge": "Disponível para projetos",
-    "heroSubtitle": "Um profissional. Quatro linguagens. Design, motion, vi­deo e produção fonográfica para marcas, artistas e conteúdo digital.",
+    "heroSubtitle": "Um profissional. Quatro linguagens. Design, motion, vídeo e produção fonográfica para marcas, artistas e conteúdo digital.",
     "stat1Val": "10+",
     "stat1Label": "Anos de experiência",
     "stat2Val": "4",
@@ -15,11 +15,11 @@
     "stat4Val": "ECAD",
     "stat4Label": "Cadastrado",
     "difHeading1": "Menos",
-    "difHeading2": "intermediÃ¡rios.",
+    "difHeading2": "intermediários.",
     "difHeading3": "Mais resultado.",
-    "difSubtext": "Com mais de 10 anos de experiência em design gráfico, motion design, edição de video e produção musical, oferecendo uma solução criativa completa sem dividir o projeto entre múltiplos profissionais.",
+    "difSubtext": "Com mais de 10 anos de experiência em design gráfico, motion design, edição de vídeo e produção musical, ofereço uma solução criativa completa sem dividir o projeto entre múltiplos profissionais.",
     "contactHeading": "Bora criar algo?",
-    "contactSubtext": "Tem um projeto de design, vÃ­deo, motion ou mÃºsica? Me manda uma mensagem. Respondo pelo WhatsApp ou e-mail e sem enrolação.",
+    "contactSubtext": "Tem um projeto de design, vídeo, motion ou música? Me manda uma mensagem. Respondo pelo WhatsApp ou e-mail — sem enrolação.",
     "footerCopy": "© 2026 Frederico Pierre · Design · Motion Designer · Video Maker · Audiovisual"
   },
   "theme": {
@@ -31,10 +31,8 @@
     "border": "rgba(237,233,226,0.08)"
   },
   "projects": [],
-  "pinned": [
-    "seed-pizza"
-  ],
+  "pinned": ["seed-pizza"],
   "hiddenSeeds": [],
   "audio": null,
-  "updatedAt": "2026-08-05T11:22:27.544Z"
+  "updatedAt": "2026-07-31T00:00:00.000Z"
 }
