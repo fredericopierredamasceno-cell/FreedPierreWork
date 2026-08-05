@@ -1,26 +1,26 @@
 {
   "content": {
-    "heroLine1": "ONDE ÁUDIO",
+    "heroLine1": "ONDE ÃUDIO",
     "heroLine2": "DESIGN",
     "heroLine3": "E MOVIMENTOS",
     "heroLine4": "SE ENCONTRAM",
-    "heroBadge": "DisponÃÂÃÂ­vel para projetos",
-    "heroSubtitle": "Um profissional. Quatro linguagens. Design, motion, vÃÂÃÂ­deo e produÃÂÃÂ§ÃÂÃÂ£o fonogrÃÂÃÂ¡fica para marcas, artistas e conteÃÂÃÂºdo digital.",
+    "heroBadge": "DisponÃÂÃÂÃÂÃÂ­vel para projetos",
+    "heroSubtitle": "Um profissional. Quatro linguagens. Design, motion, vÃÂÃÂÃÂÃÂ­deo e produÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂ£o fonogrÃÂÃÂÃÂÃÂ¡fica para marcas, artistas e conteÃÂÃÂÃÂÃÂºdo digital.",
     "stat1Val": "10+",
-    "stat1Label": "Anos de experiÃÂÃÂªncia",
+    "stat1Label": "Anos de experiÃÂÃÂÃÂÃÂªncia",
     "stat2Val": "4",
-    "stat2Label": "ÃÂÃÂreas de atuaÃÂÃÂ§ÃÂÃÂ£o",
+    "stat2Label": "ÃÂÃÂÃÂÃÂreas de atuaÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂ£o",
     "stat3Val": "Multi",
     "stat3Label": "Perfil criativo",
     "stat4Val": "ECAD",
     "stat4Label": "Cadastrado",
     "difHeading1": "Menos",
-    "difHeading2": "intermediÃÂÃÂ¡rios.",
+    "difHeading2": "intermediÃÂÃÂÃÂÃÂ¡rios.",
     "difHeading3": "Mais resultado.",
-    "difSubtext": "Com mais de 10 anos de experiÃÂÃÂªncia em design grÃÂÃÂ¡fico, motion design, ediÃÂÃÂ§ÃÂÃÂ£o de vÃÂÃÂ­deo e produÃÂÃÂ§ÃÂÃÂ£o musical, ofereÃÂÃÂ§o uma soluÃÂÃÂ§ÃÂÃÂ£o criativa completa sem dividir o projeto entre mÃÂÃÂºltiplos profissionais.",
+    "difSubtext": "Com mais de 10 anos de experiÃÂÃÂÃÂÃÂªncia em design grÃÂÃÂÃÂÃÂ¡fico, motion design, ediÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂ£o de vÃÂÃÂÃÂÃÂ­deo e produÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂ£o musical, ofereÃÂÃÂÃÂÃÂ§o uma soluÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂ£o criativa completa sem dividir o projeto entre mÃÂÃÂÃÂÃÂºltiplos profissionais.",
     "contactHeading": "Bora criar algo?",
-    "contactSubtext": "Tem um projeto de design, vÃÂÃÂ­deo, motion ou mÃÂÃÂºsica? Me manda uma mensagem. Respondo pelo WhatsApp ou e-mail ÃÂ¢ÃÂÃÂ sem enrolaÃÂÃÂ§ÃÂÃÂ£o.",
-    "footerCopy": "ÃÂÃÂ© 2026 Frederico Pierre ÃÂÃÂ· Design ÃÂÃÂ· Motion Designer ÃÂÃÂ· Video Maker ÃÂÃÂ· Audiovisual"
+    "contactSubtext": "Tem um projeto de design, vÃÂÃÂÃÂÃÂ­deo, motion ou mÃÂÃÂÃÂÃÂºsica? Me manda uma mensagem. Respondo pelo WhatsApp ou e-mail ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ sem enrolaÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂ£o.",
+    "footerCopy": "ÃÂÃÂÃÂÃÂ© 2026 Frederico Pierre ÃÂÃÂÃÂÃÂ· Design ÃÂÃÂÃÂÃÂ· Motion Designer ÃÂÃÂÃÂÃÂ· Video Maker ÃÂÃÂÃÂÃÂ· Audiovisual"
   },
   "theme": {
     "primary": "#E8863A",
@@ -35,6 +35,9 @@
     "seed-pizza"
   ],
   "hiddenSeeds": [],
-  "audio": null,
-  "updatedAt": "2026-08-05T12:00:39.712Z"
+  "audio": {
+    "name": "Nice Bass.mp3",
+    "url": "/uploads/audio/1785931449132-Nice_Bass.mp3"
+  },
+  "updatedAt": "2026-08-05T12:04:13.678Z"
 }
