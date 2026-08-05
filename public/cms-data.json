@@ -33,6 +33,9 @@
   "projects": [],
   "pinned": [],
   "hiddenSeeds": [],
-  "audio": null,
-  "updatedAt": "2026-07-31T00:00:00.000Z"
+  "audio": {
+    "name": "Me And My Crew Mix Estudo.mp3",
+    "url": "/uploads/audio/1785967609930-Me_And_My_Crew_Mix_Estudo.mp3"
+  },
+  "updatedAt": "2026-08-05T22:06:55.205Z"
 }
