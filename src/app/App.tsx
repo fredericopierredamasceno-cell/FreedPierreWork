@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import {
-  Mail, Phone, Menu, X, ChevronDown,
+  Mail, Menu, X, ChevronDown,
   Mic, Film, Palette, MessageCircle, ArrowUpRight,
   Play, Pause, Upload, Trash2, Plus, ImageIcon, VideoIcon,
   Check, Music, LogOut, Lock, Eye, EyeOff, Sparkles,
@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import heroVideo from "../imports/Portf_lio_Video_Final_Ver.mp4";
 import pizzaVideo from "../imports/Lan_amento_Pizza_Ifood.mp4";
-import alienadoVideo from "../imports/WhatsApp_Video_2026-08-05_at_00.10.39.mp4";
 import logoImg from "../imports/Logo_Freed_Pierre.png";
 
 /* ─────────────────────────────────────────────────────────────────
@@ -152,7 +151,9 @@ async function ghFetchCMS(cfg: Pick<GitHubConfig, "owner" | "repo" | "branch" | 
     );
     if (!r.ok) return null;
     const json = await r.json();
-    const decoded = JSON.parse(atob(json.content.replace(/\n/g, "")));
+    const base64 = json.content.replace(/\n/g, "");
+    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    const decoded = JSON.parse(new TextDecoder().decode(bytes));
     return { data: makeCMSData(decoded), sha: json.sha };
   } catch { return null; }
 }
@@ -261,11 +262,22 @@ const THEME_DEFAULTS = {
 };
 type SiteTheme = typeof THEME_DEFAULTS;
 
+function isCorrupted(obj: Record<string, string>): boolean {
+  return Object.values(obj).some(v => typeof v === "string" && /Ã|Â[ª-¿]|â€/.test(v));
+}
+
 function makeCMSData(overrides: Partial<CMSData> = {}): CMSData {
+  const safeContent = overrides.content && !isCorrupted(overrides.content as Record<string, string>)
+    ? { ...CONTENT_DEFAULTS, ...overrides.content }
+    : { ...CONTENT_DEFAULTS };
   return {
-    content: { ...CONTENT_DEFAULTS }, theme: { ...THEME_DEFAULTS },
-    projects: [], pinned: ["seed-pizza", "seed-alienado"], hiddenSeeds: [],
-    audio: null, updatedAt: new Date().toISOString(), ...overrides,
+    content: safeContent,
+    theme: { ...THEME_DEFAULTS, ...(overrides.theme ?? {}) },
+    projects: overrides.projects ?? [],
+    pinned: overrides.pinned ?? [],
+    hiddenSeeds: overrides.hiddenSeeds ?? [],
+    audio: overrides.audio ?? null,
+    updatedAt: overrides.updatedAt ?? new Date().toISOString(),
   };
 }
 
@@ -344,7 +356,7 @@ function useCMS() {
       { id: "sha", label: "Obtendo referência do repositório...", status: "pending" },
       { id: "commit", label: "Commitando no GitHub...", status: "pending" },
       { id: "push", label: "Enviando alterações...", status: "pending" },
-      { id: "netlify", label: "Netlify iniciando build...", status: "pending" },
+      { id: "vercel", label: "Vercel iniciando build...", status: "pending" },
       { id: "done", label: "Publicação concluída.", status: "pending" },
     ];
 
@@ -378,13 +390,13 @@ function useCMS() {
     await new Promise(r => setTimeout(r, 600));
     upd("push", "done"); addLog("success", "Push realizado.");
 
-    upd("netlify", "running"); addLog("info", "Build iniciado na Netlify.");
+    upd("vercel", "running"); addLog("info", "Build iniciado na Vercel.");
     await new Promise(r => setTimeout(r, 1200));
-    upd("netlify", "done");
+    upd("vercel", "done");
 
     upd("done", "running");
     await new Promise(r => setTimeout(r, 300));
-    upd("done", "done"); addLog("success", "Publicação concluída — deploy ativo na Netlify em ~1-2 min.");
+    upd("done", "done"); addLog("success", "Publicação concluída — deploy ativo na Vercel em ~1-2 min.");
 
     setCms(payload); setSaveStatus("success");
     setTimeout(() => setSaveStatus("idle"), 9000);
@@ -469,15 +481,9 @@ function checkSession() { return sessionStorage.getItem(SESSION_KEY) === "1"; }
 const ALL_SEEDS: DisplayProject[] = [
   {
     id: "seed-pizza", category: "Motion Design",
-    title: "Motion Lançamento de Pizzas", isFixed: true,
+    title: "Motion Lançamento de Pizzas",
     description: "🍕✨ Motion Design desenvolvido para o Grupo Beija-flor, promovendo novidades do cardápio da unidade de Jardim Teresópolis, Betim/MG.\n\nCada animação, transição e detalhe foi pensado para valorizar o produto e criar uma comunicação dinâmica, moderna, envolvente e com apelo comercial.\n\n🎬 Mais um trabalho que tive grande satisfação em desenvolver.",
     mediaType: "video", mediaUrl: pizzaVideo, createdAt: 0,
-  },
-  {
-    id: "seed-alienado", category: "Motion Design",
-    title: "Alienado — Motion Design", isFixed: true,
-    description: "🎬✨ Projeto de motion design com identidade visual forte e cinematográfica. Animações, tipografia animada e edição de vídeo integrada para criar uma experiência audiovisual única e impactante.",
-    mediaType: "video", mediaUrl: alienadoVideo, createdAt: 1,
   },
 ];
 
@@ -502,7 +508,6 @@ const ADVANTAGES = [
 const CONTACT_LINKS = [
   { icon: <MessageCircle size={18} />, label: "WhatsApp", value: "(31) 97579-1151", href: "https://wa.me/5531975791151" },
   { icon: <Mail size={18} />, label: "E-mail", value: "fredericopierredamasceno@gmail.com", href: "mailto:fredericopierredamasceno@gmail.com" },
-  { icon: <Phone size={18} />, label: "Telefone", value: "(31) 97579-1151", href: "tel:+5531975791151" },
 ];
 
 /* ─── Error Boundary ─────────────────────────────────────────────── */
@@ -638,7 +643,7 @@ function PublishProgressModal({ open, steps, onClose }: { open: boolean; steps: 
       <div className="relative z-10 w-full max-w-md bg-card border border-border">
         <div className="px-6 py-5 border-b border-border flex items-center justify-between">
           <div>
-            <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-0.5">GitHub + Netlify</div>
+            <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-0.5">GitHub + Vercel</div>
             <h2 className="text-xl font-black uppercase text-foreground" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
               {hasError ? "Falha na publicação" : allDone ? "Publicado!" : "Publicando..."}
             </h2>
@@ -670,7 +675,7 @@ function PublishProgressModal({ open, steps, onClose }: { open: boolean; steps: 
             {allDone && (
               <div className="flex items-start gap-2 text-sm text-muted-foreground font-light">
                 <Clock size={13} className="text-amber-400 flex-shrink-0 mt-0.5" />
-                <span>O site será atualizado em ~1–2 min após a Netlify concluir o build.</span>
+                <span>O site será atualizado em ~1–2 min após a Vercel concluir o build.</span>
               </div>
             )}
             <button onClick={onClose} className={`w-full py-2.5 font-bold text-xs tracking-widest uppercase ${allDone ? "bg-primary text-background" : "border border-border text-muted-foreground"}`}>
@@ -759,7 +764,7 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
       onMouseEnter={startPlay}
       onMouseLeave={stopPlay}
       onClick={handleTap}
-      onTouchEnd={e => { e.preventDefault(); playing ? stopPlay() : startPlay(); }}
+      onTouchEnd={e => { e.preventDefault(); onClick?.(); }}
     >
       {/* Video */}
       {item.mediaType === "video" && (
@@ -1105,7 +1110,14 @@ function GalleryModal({ service, allProjects, initialItem, onClose, showAdmin, o
               <div className="bg-black flex items-center justify-center" style={{ minHeight: "clamp(180px,40vw,360px)" }}>
                 {selected.mediaType === "video" && <video src={selected.mediaUrl} controls autoPlay muted loop playsInline className="w-full h-full object-contain max-h-[50vh]" />}
                 {selected.mediaType === "embed" && selected.embedId && (
-                  <iframe src={`${selected.embedPlatform === "youtube" ? `https://www.youtube.com/embed/${selected.embedId}` : `https://player.vimeo.com/video/${selected.embedId}`}`} className="w-full aspect-video" allowFullScreen allow="autoplay" />
+                  <iframe
+                    src={selected.embedPlatform === "youtube"
+                      ? `https://www.youtube.com/embed/${selected.embedId}?playsinline=1&rel=0`
+                      : `https://player.vimeo.com/video/${selected.embedId}?playsinline=1`}
+                    className="w-full aspect-video"
+                    allowFullScreen
+                    allow="autoplay; fullscreen; picture-in-picture; xr-spatial-tracking"
+                  />
                 )}
                 {selected.mediaType === "image" && <img src={selected.mediaUrl} alt={selected.title} className="w-full h-full object-contain max-h-[50vh]" />}
               </div>
@@ -1231,7 +1243,6 @@ function CarouselRow({ label, items, showAdmin, pinned, onTogglePin, onDelete, o
             msOverflowStyle: "none",
           }}
         >
-          <style>{`.carousel-hide::-webkit-scrollbar { display: none; }`}</style>
           {items.map((item, idx) => (
             <div
               key={item.id}
@@ -1368,8 +1379,8 @@ function GitHubConfigTab({ ghConfig, onSave, onClear, onPublish, onSync, cms, sa
 
       {/* Publish action */}
       <div className="border border-border p-4">
-        <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-2">Publicar → GitHub → Netlify</div>
-        <p className="text-xs text-muted-foreground font-light mb-3">Salva todas as alterações. A Netlify detecta o commit e publica automaticamente.</p>
+        <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-2">Publicar → GitHub → Vercel</div>
+        <p className="text-xs text-muted-foreground font-light mb-3">Salva todas as alterações. A Vercel detecta o commit e publica automaticamente.</p>
         <div className="flex items-center gap-3 flex-wrap">
           <button onClick={onPublish} disabled={!configComplete || saveStatus === "saving"} className={`flex items-center gap-2 px-5 py-2.5 font-bold text-xs tracking-widest uppercase transition-all ${!configComplete ? "bg-muted text-muted-foreground cursor-not-allowed" : saveStatus === "saving" ? "bg-primary/60 text-background" : "bg-primary text-background hover:bg-primary/85"}`}>
             {saveStatus === "saving" ? <><Loader2 size={12} className="animate-spin" /> Publicando...</> : <><Github size={12} /> Publicar agora</>}
@@ -1634,8 +1645,8 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
 
           {tab === "info" && (
             <div className="space-y-4">
-              <div className="border border-green-500/20 bg-green-500/5 p-4"><div className="font-mono text-[10px] text-green-400 uppercase tracking-widest mb-2">Arquitetura</div><p className="text-sm text-muted-foreground font-light">Todo conteúdo persiste em <code className="text-primary">public/cms-data.json</code> no GitHub. Mídia vai para <code className="text-primary">public/uploads/</code>. Netlify republica a cada commit.</p></div>
-              <div className="border border-border p-4 space-y-1.5">{["1. Login", "2. Aba GitHub → Configurar → Salvar", "3. Edite textos, cores ou faça uploads", "4. Publicar agora (aba GitHub)", "5. ~2 min → Netlify publica", "6. Todos os dispositivos veem o conteúdo"].map((s, i) => <p key={i} className="text-sm text-muted-foreground font-light">{s}</p>)}</div>
+              <div className="border border-green-500/20 bg-green-500/5 p-4"><div className="font-mono text-[10px] text-green-400 uppercase tracking-widest mb-2">Arquitetura</div><p className="text-sm text-muted-foreground font-light">Todo conteúdo persiste em <code className="text-primary">public/cms-data.json</code> no GitHub. Mídia vai para <code className="text-primary">public/uploads/</code>. Vercel republica a cada commit.</p></div>
+              <div className="border border-border p-4 space-y-1.5">{["1. Login", "2. Aba GitHub → Configurar → Salvar", "3. Edite textos, cores ou faça uploads", "4. Publicar agora (aba GitHub)", "5. ~2 min → Vercel publica", "6. Todos os dispositivos veem o conteúdo"].map((s, i) => <p key={i} className="text-sm text-muted-foreground font-light">{s}</p>)}</div>
               <div className="border border-amber-500/20 bg-amber-500/5 p-4"><div className="font-mono text-[10px] text-amber-400 uppercase tracking-widest mb-2">Limite</div><p className="text-sm text-amber-200/70 font-light">Arquivos até <strong>25 MB</strong> via GitHub API. Vídeos maiores: use YouTube/Vimeo.</p></div>
             </div>
           )}
@@ -1768,7 +1779,7 @@ function PortfolioApp() {
           <video
             src={heroVideo} autoPlay muted loop playsInline
             className="w-full h-full object-cover"
-            style={{ objectPosition: "top center" }}
+            style={{ objectPosition: "75% top" }}
           />
           <div className="absolute inset-0 bg-background/65" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/25 via-background/15 to-background" />
