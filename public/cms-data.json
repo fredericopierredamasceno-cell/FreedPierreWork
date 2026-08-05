@@ -1,26 +1,26 @@
 {
   "content": {
-    "heroLine1": "ONDE ÃÂUDIO,",
+    "heroLine1": "ONDE ÁUDIO,",
     "heroLine2": "DESIGN",
     "heroLine3": "E MOVIMENTOS",
     "heroLine4": "SE ENCONTRAM",
-    "heroBadge": "DisponÃÂ­vel para projetos",
-    "heroSubtitle": "Um profissional. Quatro linguagens. Design, motion, vÃÂ­deo e produÃÂ§ÃÂ£o fonogrÃÂ¡fica para marcas, artistas e conteÃÂºdo digital.",
+    "heroBadge": "Disponível para projetos",
+    "heroSubtitle": "Um profissional. Quatro linguagens. Design, motion, vídeo e produção fonográfica para marcas, artistas e conteúdo digital.",
     "stat1Val": "10+",
-    "stat1Label": "Anos de experiÃÂªncia",
+    "stat1Label": "Anos de experiência",
     "stat2Val": "4",
-    "stat2Label": "ÃÂreas de atuaÃÂ§ÃÂ£o",
+    "stat2Label": "Áreas de atuação",
     "stat3Val": "Multi",
     "stat3Label": "Perfil criativo",
     "stat4Val": "ECAD",
     "stat4Label": "Cadastrado",
     "difHeading1": "Menos",
-    "difHeading2": "intermediÃÂ¡rios.",
+    "difHeading2": "intermediários.",
     "difHeading3": "Mais resultado.",
-    "difSubtext": "Com mais de 10 anos de experiÃÂªncia em design grÃÂ¡fico, motion design, ediÃÂ§ÃÂ£o de vÃÂ­deo e produÃÂ§ÃÂ£o musical, ofereÃÂ§o uma soluÃÂ§ÃÂ£o criativa completa sem dividir o projeto entre mÃÂºltiplos profissionais.",
+    "difSubtext": "Com mais de 10 anos de experiência em design gráfico, motion design, edição de vídeo e produção musical, ofereço uma solução criativa completa sem dividir o projeto entre múltiplos profissionais.",
     "contactHeading": "Bora criar algo?",
-    "contactSubtext": "Tem um projeto de design, vÃÂ­deo, motion ou mÃÂºsica? Me manda uma mensagem. Respondo pelo WhatsApp ou e-mail Ã¢ÂÂ sem enrolaÃÂ§ÃÂ£o.",
-    "footerCopy": "ÃÂ© 2026 Frederico Pierre ÃÂ· Design ÃÂ· Motion Designer ÃÂ· Video Maker ÃÂ· Audiovisual"
+    "contactSubtext": "Tem um projeto de design, vídeo, motion ou música? Me manda uma mensagem. Respondo pelo WhatsApp ou e-mail — sem enrolação.",
+    "footerCopy": "© 2026 Frederico Pierre · Design · Motion Designer · Video Maker · Audiovisual"
   },
   "theme": {
     "primary": "#E8863A",
@@ -30,25 +30,9 @@
     "muted": "#1A1E2B",
     "border": "rgba(237,233,226,0.08)"
   },
-  "projects": [
-    {
-      "id": "proj-1785903775906",
-      "title": "ExtraFM",
-      "description": "",
-      "category": "Motion Design",
-      "mediaType": "embed",
-      "mediaUrl": "https://www.youtube.com/embed/3tAAzTHiDc0",
-      "thumbUrl": "https://img.youtube.com/vi/3tAAzTHiDc0/hqdefault.jpg",
-      "embedPlatform": "youtube",
-      "embedId": "3tAAzTHiDc0",
-      "createdAt": 1785903775906
-    }
-  ],
-  "pinned": [
-    "seed-pizza",
-    "proj-1785903775906"
-  ],
+  "projects": [],
+  "pinned": ["seed-pizza"],
   "hiddenSeeds": [],
   "audio": null,
-  "updatedAt": "2026-08-05T04:44:04.142Z"
+  "updatedAt": "2026-07-31T00:00:00.000Z"
 }
