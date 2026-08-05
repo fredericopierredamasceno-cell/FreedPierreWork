@@ -30,12 +30,27 @@
     "muted": "#1A1E2B",
     "border": "rgba(237,233,226,0.08)"
   },
-  "projects": [],
-  "pinned": [],
+  "projects": [
+    {
+      "id": "proj-1785967776801",
+      "title": "Extra FM",
+      "description": "",
+      "category": "Video Making",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/3tAAzTHiDc0",
+      "thumbUrl": "https://img.youtube.com/vi/3tAAzTHiDc0/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "3tAAzTHiDc0",
+      "createdAt": 1785967776801
+    }
+  ],
+  "pinned": [
+    "proj-1785967776801"
+  ],
   "hiddenSeeds": [],
   "audio": {
     "name": "Me And My Crew Mix Estudo.mp3",
     "url": "/uploads/audio/1785967609930-Me_And_My_Crew_Mix_Estudo.mp3"
   },
-  "updatedAt": "2026-08-05T22:06:55.205Z"
+  "updatedAt": "2026-08-05T22:09:37.597Z"
 }
