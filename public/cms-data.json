@@ -32,8 +32,8 @@
   },
   "projects": [
     {
-      "id": "proj-1785967776801",
-      "title": "Extra FM",
+      "id": "proj-1785967926965",
+      "title": "Anuncio Extra-FM",
       "description": "",
       "category": "Video Making",
       "mediaType": "embed",
@@ -41,16 +41,20 @@
       "thumbUrl": "https://img.youtube.com/vi/3tAAzTHiDc0/hqdefault.jpg",
       "embedPlatform": "youtube",
       "embedId": "3tAAzTHiDc0",
-      "createdAt": 1785967776801
+      "createdAt": 1785967926965
+    }
+  ],
+  "audios": [
+    {
+      "id": "migrated-audio",
+      "title": "Me And My Crew Mix Estudo",
+      "url": "/uploads/audio/1785967609930-Me_And_My_Crew_Mix_Estudo.mp3",
+      "createdAt": 0
     }
   ],
   "pinned": [
-    "proj-1785967776801"
+    "proj-1785967926965"
   ],
   "hiddenSeeds": [],
-  "audio": {
-    "name": "Me And My Crew Mix Estudo.mp3",
-    "url": "/uploads/audio/1785967609930-Me_And_My_Crew_Mix_Estudo.mp3"
-  },
-  "updatedAt": "2026-08-05T22:09:37.597Z"
+  "updatedAt": "2026-08-05T22:12:07.743Z"
 }
