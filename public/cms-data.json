@@ -23,7 +23,7 @@
     "footerCopy": "© 2026 Frederico Pierre · Design · Motion Designer · Video Maker · Audiovisual"
   },
   "theme": {
-    "primary": "#E8863A",
+    "primary": "#960018",
     "background": "#07080F",
     "foreground": "#EDE9E2",
     "card": "#0F111A",
@@ -31,8 +31,17 @@
     "border": "rgba(237,233,226,0.08)"
   },
   "projects": [],
+  "audios": [
+    {
+      "id": "audio-1785972295343",
+      "title": "Nice Bass",
+      "artist": "Freed Pierre",
+      "url": "/uploads/audio/1785972285579-Nice_Bass.mp3",
+      "coverUrl": "/uploads/images/1785972293678-f17bd481-6071-488e-bfc8-481f06631dcf.jpeg",
+      "createdAt": 1785972295343
+    }
+  ],
   "pinned": [],
   "hiddenSeeds": [],
-  "audio": null,
-  "updatedAt": "2026-07-31T00:00:00.000Z"
+  "updatedAt": "2026-08-05T23:24:55.816Z"
 }
