@@ -23,7 +23,7 @@
     "footerCopy": "© 2026 Frederico Pierre · Design · Motion Designer · Video Maker · Audiovisual"
   },
   "theme": {
-    "primary": "#E8863A",
+    "primary": "#960018",
     "background": "#07080F",
     "foreground": "#EDE9E2",
     "card": "#0F111A",
@@ -85,5 +85,5 @@
     "seed-pizza"
   ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-05T22:22:39.737Z"
+  "updatedAt": "2026-08-05T22:25:36.913Z"
 }
