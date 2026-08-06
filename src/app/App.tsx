@@ -6,7 +6,7 @@ import {
   ImageIcon, VideoIcon, Check, Music, LogOut, Lock, Eye, EyeOff,
   Sparkles, Settings, FileText, Paintbrush, FolderOpen, Info,
   Pin, PinOff, Github, RefreshCw, AlertCircle, CheckCircle2, Loader2,
-  Youtube, Link2, ScrollText, Zap, Clock, CheckCheck, XCircle, WifiOff,
+  Youtube, Link2, ScrollText, Zap, Clock, CheckCheck, XCircle,
   Library, Volume2, VolumeX, Search, ChevronLeft, ChevronRight,
   ZoomIn,
 } from "lucide-react";
@@ -207,6 +207,7 @@ type DisplayProject = CMSProject;
 
 interface CMSAudio {
   id: string; title: string; artist?: string;
+  genre?: string; // gênero musical ex: "Trap", "Eletrônico", "Gospel"
   url: string; coverUrl?: string; createdAt: number;
 }
 
@@ -950,22 +951,26 @@ function CarouselRow({ label, items, showAdmin, pinned, onTogglePin, onDelete, o
    AUDIO SYSTEM — player com estado reativo correto
 ═══════════════════════════════════════════════════════════════════ */
 
-function AudioCard({ audio, isActive, isPlaying, onToggle, onDelete, showAdmin }: {
+const AUDIO_GENRES = ["Trap", "Beat", "Gospel", "Eletrônico", "Hip-Hop", "R&B", "Pop", "Funk", "Samba", "Reggaeton", "Lofi", "Instrumental", "Mix", "Outro"];
+
+function AudioCard({ audio, isActive, isPlaying, onToggle, onDelete, showAdmin, size = "md" }: {
   audio: CMSAudio; isActive: boolean; isPlaying: boolean;
   onToggle: (id: string) => void; onDelete?: (id: string) => void; showAdmin: boolean;
+  size?: "sm" | "md" | "lg";
 }) {
   const tap = useTapHandler(() => onToggle(audio.id));
+  const imgSize = size === "lg" ? "w-48 h-48" : size === "sm" ? "w-28 h-28" : "w-36 h-36 md:w-44 md:h-44";
   return (
-    <div className="flex-shrink-0 w-40 md:w-48 group relative">
+    <div className="flex-shrink-0 group relative" style={{ width: size === "lg" ? 192 : size === "sm" ? 112 : undefined }}>
       <div
-        className={`aspect-square relative overflow-hidden cursor-pointer border transition-colors ${isActive ? "border-primary/60" : "border-border hover:border-primary/40"}`}
+        className={`relative overflow-hidden cursor-pointer border transition-colors ${imgSize} ${isActive ? "border-primary/60" : "border-border hover:border-primary/40"}`}
         {...tap}
         style={{ touchAction: "pan-y" }}
       >
         {audio.coverUrl
           ? <img src={audio.coverUrl} alt={audio.title} className="w-full h-full object-cover" loading="lazy" />
           : <div className="w-full h-full bg-card flex items-center justify-center" style={{ background: "linear-gradient(135deg, #1A1E2B 0%, #0F111A 100%)" }}>
-              <Music size={32} className="text-muted-foreground/40" />
+              <Music size={size === "lg" ? 40 : 24} className="text-muted-foreground/40" />
             </div>}
         <div className={`absolute inset-0 bg-background/40 flex items-center justify-center transition-opacity ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
           <div className="w-10 h-10 bg-primary flex items-center justify-center">
@@ -977,8 +982,13 @@ function AudioCard({ audio, isActive, isPlaying, onToggle, onDelete, showAdmin }
             {[3, 5, 4, 6, 3].map((h, i) => <div key={i} className="w-0.5 bg-primary animate-pulse rounded-full" style={{ height: `${h * 2}px`, animationDelay: `${i * 0.15}s` }} />)}
           </div>
         )}
+        {audio.genre && (
+          <div className="absolute bottom-1.5 left-1.5">
+            <span className="font-mono text-[8px] tracking-wider uppercase bg-background/80 text-primary px-1.5 py-0.5">{audio.genre}</span>
+          </div>
+        )}
       </div>
-      <div className="pt-2.5">
+      <div className="pt-2 max-w-full">
         <p className="text-sm font-bold text-foreground truncate leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{audio.title}</p>
         {audio.artist && <p className="font-mono text-[10px] text-muted-foreground truncate mt-0.5">{audio.artist}</p>}
       </div>
@@ -991,10 +1001,8 @@ function AudioCard({ audio, isActive, isPlaying, onToggle, onDelete, showAdmin }
   );
 }
 
-function AudioCarousel({ audios, showAdmin, onDelete }: {
-  audios: CMSAudio[]; showAdmin: boolean; onDelete: (id: string) => void;
-}) {
-  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll();
+/* AudioPlayer hook — reutilizável no carrossel e na galeria */
+function useAudioPlayer(audios: CMSAudio[]) {
   const audioElRef = useRef<HTMLAudioElement>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1002,31 +1010,23 @@ function AudioCarousel({ audios, showAdmin, onDelete }: {
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  const activeAudio = audios.find(a => a.id === activeId);
+  const activeAudio = audios.find(a => a.id === activeId) ?? null;
 
   const toggle = useCallback((id: string) => {
     const el = audioElRef.current;
     if (activeId === id && el) {
-      if (el.paused) { el.play().catch(() => {}); }
-      else { el.pause(); }
+      if (el.paused) el.play().catch(() => {});
+      else el.pause();
     } else {
-      // Switch to new track
-      setActiveId(id);
-      setCurrentTime(0);
-      setDuration(0);
-      setLoading(true);
-      // Audio element will reload via key change, then autoplay
+      setActiveId(id); setCurrentTime(0); setDuration(0); setLoading(true);
     }
   }, [activeId]);
 
-  // When activeId changes (new track), autoplay after element mounts
   useEffect(() => {
     if (!activeId) return;
-    const el = audioElRef.current;
-    if (!el) return;
+    const el = audioElRef.current; if (!el) return;
     setIsPlaying(false);
-    const tryPlay = () => { el.play().catch(() => setIsPlaying(false)); };
+    const tryPlay = () => el.play().catch(() => setIsPlaying(false));
     if (el.readyState >= 3) tryPlay();
     else el.addEventListener("canplay", tryPlay, { once: true });
   }, [activeId]);
@@ -1037,33 +1037,82 @@ function AudioCarousel({ audios, showAdmin, onDelete }: {
     el.currentTime = ((e.clientX - r.left) / r.width) * duration;
   };
 
+  const audioEl = activeAudio ? (
+    <audio
+      key={activeAudio.id}
+      ref={audioElRef}
+      src={activeAudio.url}
+      muted={muted}
+      preload="metadata"
+      onPlay={() => setIsPlaying(true)}
+      onPause={() => setIsPlaying(false)}
+      onEnded={() => { setIsPlaying(false); setActiveId(null); }}
+      onTimeUpdate={() => { const el = audioElRef.current; if (el) setCurrentTime(el.currentTime); }}
+      onLoadedMetadata={() => { const el = audioElRef.current; if (el) setDuration(el.duration); setLoading(false); }}
+      onWaiting={() => setLoading(true)}
+      onCanPlay={() => setLoading(false)}
+      onError={() => { setLoading(false); toast.error("Erro ao carregar áudio."); }}
+    />
+  ) : null;
+
+  return { activeAudio, activeId, isPlaying, currentTime, duration, muted, setMuted, loading, toggle, seekTo, audioEl, audioElRef };
+}
+
+function MiniPlayer({ player }: { player: ReturnType<typeof useAudioPlayer> }) {
+  const { activeAudio, isPlaying, currentTime, duration, muted, setMuted, loading, toggle, seekTo, audioElRef } = player;
+  if (!activeAudio) return null;
+  return (
+    <div className="border border-border bg-card/60 p-3 flex items-center gap-3">
+      <div className="w-9 h-9 flex-shrink-0 overflow-hidden border border-border">
+        {activeAudio.coverUrl ? <img src={activeAudio.coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-muted flex items-center justify-center"><Music size={12} className="text-muted-foreground" /></div>}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold truncate text-foreground" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{activeAudio.title}</p>
+        {activeAudio.artist && <p className="font-mono text-[9px] text-muted-foreground truncate">{activeAudio.artist}</p>}
+        <div className="flex items-center gap-2 mt-1.5">
+          <span className="font-mono text-[9px] text-muted-foreground tabular-nums w-8 flex-shrink-0">{fmtTime(currentTime)}</span>
+          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden cursor-pointer" onClick={seekTo}>
+            <div className="h-full bg-primary rounded-full" style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : "0%" }} />
+          </div>
+          <span className="font-mono text-[9px] text-muted-foreground tabular-nums w-8 flex-shrink-0 text-right">{duration > 0 ? fmtTime(duration) : "--:--"}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        {loading
+          ? <div className="w-8 h-8 bg-primary/20 flex items-center justify-center"><Loader2 size={13} className="animate-spin text-primary" /></div>
+          : <button onClick={() => toggle(activeAudio.id)} className="w-8 h-8 bg-primary flex items-center justify-center text-background">
+              {isPlaying ? <Pause size={13} /> : <Play size={13} className="ml-0.5" />}
+            </button>}
+        <button onClick={() => { setMuted(!muted); if (audioElRef.current) audioElRef.current.muted = !muted; }} className="w-7 h-7 border border-border text-muted-foreground flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+          {muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AudioCarousel({ audios, showAdmin, onDelete }: {
+  audios: CMSAudio[]; showAdmin: boolean; onDelete: (id: string) => void;
+}) {
+  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll();
+  const player = useAudioPlayer(audios);
+  const { activeId, isPlaying, toggle, audioEl } = player;
+
   if (audios.length === 0 && !showAdmin) return null;
 
+  // Largura fixa dos cards: 140px no mobile, 160px no desktop — nunca estoura
+  const CARD_W = 140;
+
   return (
-    <div className="space-y-4">
-      {activeAudio && (
-        <audio
-          key={activeAudio.id}
-          ref={audioElRef}
-          src={activeAudio.url}
-          muted={muted}
-          preload="metadata"
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onEnded={() => { setIsPlaying(false); setActiveId(null); }}
-          onTimeUpdate={() => { const el = audioElRef.current; if (el) setCurrentTime(el.currentTime); }}
-          onLoadedMetadata={() => { const el = audioElRef.current; if (el) setDuration(el.duration); setLoading(false); }}
-          onWaiting={() => setLoading(true)}
-          onCanPlay={() => setLoading(false)}
-          onError={() => { setLoading(false); toast.error("Erro ao carregar áudio."); }}
-        />
-      )}
+    /* overflow-hidden no wrapper externo evita que o carrossel alargue a página */
+    <div className="space-y-4 overflow-hidden">
+      {audioEl}
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="w-1.5 h-5 flex-shrink-0 rounded-sm" style={{ background: CATEGORY_COLORS["Produção Fonográfica"] }} />
-          <span className="font-black uppercase text-foreground text-lg md:text-xl" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Produções</span>
+          <span className="font-black uppercase text-foreground text-lg" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Produções</span>
           <span className="font-mono text-[9px] text-muted-foreground">{audios.length} faixa{audios.length !== 1 ? "s" : ""}</span>
         </div>
         <div className="flex gap-1">
@@ -1076,53 +1125,25 @@ function AudioCarousel({ audios, showAdmin, onDelete }: {
         </div>
       </div>
 
-      {/* Scroll row */}
+      {/* Scroll row — width fixo nos cards evita overflow horizontal na página */}
       <div className="relative">
-        <div className="absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-        <div className={`absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity ${canRight ? "opacity-100" : "opacity-0"}`} />
+        <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+        <div className={`absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity ${canRight ? "opacity-100" : "opacity-0"}`} />
         <div
           ref={scrollRef} onScroll={updateArrows} onWheel={onWheel}
           className="flex gap-3 overflow-x-auto pb-2"
           style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
         >
           {audios.map(a => (
-            <div key={a.id} data-card style={{ scrollSnapAlign: "start" }}>
-              <AudioCard audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={toggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} />
+            <div key={a.id} data-card className="flex-shrink-0" style={{ scrollSnapAlign: "start", width: CARD_W }}>
+              <AudioCard audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={toggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} size="sm" />
             </div>
           ))}
-          <div className="flex-shrink-0 w-4" />
+          <div className="flex-shrink-0 w-2" />
         </div>
       </div>
 
-      {/* Mini player */}
-      {activeAudio && (
-        <div className="border border-border bg-card/60 p-3 flex items-center gap-3">
-          <div className="w-9 h-9 flex-shrink-0 overflow-hidden border border-border">
-            {activeAudio.coverUrl ? <img src={activeAudio.coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-muted flex items-center justify-center"><Music size={12} className="text-muted-foreground" /></div>}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold truncate text-foreground" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{activeAudio.title}</p>
-            {activeAudio.artist && <p className="font-mono text-[9px] text-muted-foreground truncate">{activeAudio.artist}</p>}
-            <div className="flex items-center gap-2 mt-1.5">
-              <span className="font-mono text-[9px] text-muted-foreground tabular-nums w-8 flex-shrink-0">{fmtTime(currentTime)}</span>
-              <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden cursor-pointer relative" onClick={seekTo}>
-                <div className="h-full bg-primary rounded-full transition-all" style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : "0%" }} />
-              </div>
-              <span className="font-mono text-[9px] text-muted-foreground tabular-nums w-8 flex-shrink-0 text-right">{duration > 0 ? fmtTime(duration) : "--:--"}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {loading
-              ? <div className="w-8 h-8 bg-primary/20 flex items-center justify-center"><Loader2 size={13} className="animate-spin text-primary" /></div>
-              : <button onClick={() => toggle(activeAudio.id)} className="w-8 h-8 bg-primary flex items-center justify-center text-background">
-                  {isPlaying ? <Pause size={13} /> : <Play size={13} className="ml-0.5" />}
-                </button>}
-            <button onClick={() => { setMuted(!muted); if (audioElRef.current) audioElRef.current.muted = !muted; }} className="w-7 h-7 border border-border text-muted-foreground flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
-              {muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
-            </button>
-          </div>
-        </div>
-      )}
+      <MiniPlayer player={player} />
 
       {audios.length === 0 && showAdmin && (
         <div className="border border-dashed border-border py-8 text-center">
@@ -1158,6 +1179,7 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioCoverFile, setAudioCoverFile] = useState<File | null>(null);
   const [artist, setArtist] = useState("");
+  const [genre, setGenre] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [parsedVideo, setParsedVideo] = useState<ReturnType<typeof parseVideoUrl>>(null);
   const [thumbImgOk, setThumbImgOk] = useState(true);
@@ -1171,7 +1193,7 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
   const reset = useCallback(() => {
     setTitle(""); setDesc(""); setCat(CATEGORIES[0]); setMode("file");
     setMediaFile(null); setThumbFile(null); setExtraImageFiles([]); setAudioFile(null); setAudioCoverFile(null);
-    setArtist(""); setVideoUrl(""); setParsedVideo(null); setThumbImgOk(true);
+    setArtist(""); setGenre(""); setVideoUrl(""); setParsedVideo(null); setThumbImgOk(true);
     setProgress(null); setProgress2(null); setOversize(false); setBusy(false); setDone(false); setErrMsg("");
   }, []);
 
@@ -1201,7 +1223,7 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
       if (!url) { setErrMsg("Falha no upload."); setBusy(false); return; }
       let coverUrl: string | undefined;
       if (audioCoverFile) { const cu = await uploadFile(audioCoverFile, "image", setProgress2); if (cu) coverUrl = cu; }
-      await onSaveAudio({ id: `audio-${Date.now()}`, title: title.trim(), artist: artist.trim() || undefined, url, coverUrl, createdAt: Date.now() });
+      await onSaveAudio({ id: `audio-${Date.now()}`, title: title.trim(), artist: artist.trim() || undefined, genre: genre.trim() || undefined, url, coverUrl, createdAt: Date.now() });
       setDone(true); setTimeout(() => { reset(); onClose(); }, 1000);
       return;
     }
@@ -1297,6 +1319,15 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
             </div>
             <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Título da faixa *</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="Nome da música / EP / álbum" className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
             <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Artista / feat. (opcional)</label><input value={artist} onChange={e => setArtist(e.target.value)} placeholder="Frederico Pierre" className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
+            <div>
+              <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Gênero musical (opcional)</label>
+              <div className="flex flex-wrap gap-1.5">
+                {AUDIO_GENRES.map(g => (
+                  <button key={g} type="button" onClick={() => setGenre(genre === g ? "" : g)} className={`font-mono text-[9px] tracking-wider uppercase px-2.5 py-1.5 border transition-colors ${genre === g ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>{g}</button>
+                ))}
+              </div>
+              {genre && <p className="font-mono text-[10px] text-primary mt-1.5">Selecionado: {genre}</p>}
+            </div>
           </>)}
 
           {tab !== "audio" && (<>
@@ -1385,10 +1416,63 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
    GALLERY MODAL
 ═══════════════════════════════════════════════════════════════════ */
 
-function GalleryModal({ service, allProjects, initialItem, onClose, showAdmin, onDelete, onTogglePin, pinned }: {
+const AUDIO_SERVICE_TITLE = "Produção Fonográfica";
+
+function AudioGalleryView({ audios, showAdmin, onDeleteAudio }: { audios: CMSAudio[]; showAdmin: boolean; onDeleteAudio: (id: string) => void }) {
+  const player = useAudioPlayer(audios);
+  const { activeId, isPlaying, toggle, audioEl } = player;
+  const [filterGenre, setFilterGenre] = useState<string>("all");
+
+  const genres = ["all", ...Array.from(new Set(audios.map(a => a.genre).filter(Boolean) as string[]))];
+  const filtered = filterGenre === "all" ? audios : audios.filter(a => a.genre === filterGenre);
+
+  if (audios.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4 px-6">
+        <div className="w-12 h-12 border border-border flex items-center justify-center text-muted-foreground"><Music size={24} /></div>
+        <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase text-center">Nenhuma produção cadastrada ainda</p>
+        {showAdmin && <p className="font-mono text-[10px] text-muted-foreground/50 text-center">Faça upload de áudios no painel admin</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {audioEl}
+      {/* Genre filter */}
+      {genres.length > 1 && (
+        <div className="flex gap-2 px-5 md:px-8 py-3 border-b border-border flex-wrap">
+          {genres.map(g => (
+            <button key={g} onClick={() => setFilterGenre(g)} className={`font-mono text-[9px] tracking-widest uppercase px-3 py-1.5 border transition-colors ${filterGenre === g ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>
+              {g === "all" ? "Todos" : g}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Grid */}
+      <div className="flex-1 overflow-y-auto px-5 md:px-8 py-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {filtered.map(a => (
+            <div key={a.id} className="group">
+              <AudioCard audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={toggle} onDelete={showAdmin ? onDeleteAudio : undefined} showAdmin={showAdmin} size="md" />
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Player bar */}
+      <div className="border-t border-border px-5 md:px-8 py-3">
+        <MiniPlayer player={player} />
+      </div>
+    </div>
+  );
+}
+
+function GalleryModal({ service, allProjects, audios, initialItem, onClose, showAdmin, onDelete, onDeleteAudio, onTogglePin, pinned }: {
   service: { number: string; title: string; icon: ReactNode; galleryCategories: string[] } | null;
-  allProjects: DisplayProject[]; initialItem?: DisplayProject | null;
+  allProjects: DisplayProject[]; audios: CMSAudio[];
+  initialItem?: DisplayProject | null;
   onClose: () => void; showAdmin: boolean; onDelete: (id: string) => void;
+  onDeleteAudio: (id: string) => void;
   onTogglePin: (id: string) => void; pinned: Set<string>;
 }) {
   const [selected, setSelected] = useState<DisplayProject | null>(initialItem ?? null);
@@ -1401,6 +1485,8 @@ function GalleryModal({ service, allProjects, initialItem, onClose, showAdmin, o
   }, [service, selected, onClose]);
 
   if (!service) return null;
+
+  const isAudioService = service.galleryCategories.includes(AUDIO_SERVICE_TITLE);
   const items = allProjects.filter(p => service.galleryCategories.includes(p.category));
 
   return (
@@ -1450,7 +1536,7 @@ function GalleryModal({ service, allProjects, initialItem, onClose, showAdmin, o
                 </div>
               </div>
             </div>
-          ) : items.length === 0 ? (
+          ) : isAudioService ? null : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 px-6">
               <div className="w-12 h-12 border border-border flex items-center justify-center text-muted-foreground">{service.icon}</div>
               <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase text-center">Em breve — novos projetos aqui</p>
@@ -1460,12 +1546,23 @@ function GalleryModal({ service, allProjects, initialItem, onClose, showAdmin, o
               {items.map(item => <ProjectCard key={item.id} item={item} showAdmin={showAdmin} isPinned={pinned.has(item.id)} onTogglePin={onTogglePin} onDelete={!item.isFixed ? onDelete : undefined} onClick={() => setSelected(item)} />)}
             </div>
           )}
+          {/* Galeria de áudio — renderizada quando é Produção Fonográfica e nada está selecionado */}
+          {isAudioService && !selected && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <AudioGalleryView audios={audios} showAdmin={showAdmin} onDeleteAudio={onDeleteAudio} />
+            </div>
+          )}
         </div>
 
-        {!selected && (
+        {!selected && !isAudioService && (
           <div className="border-t border-border px-5 md:px-8 py-3 flex items-center justify-between flex-shrink-0">
             <span className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase">{items.length} projeto{items.length !== 1 ? "s" : ""}</span>
             <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary font-semibold text-xs tracking-wider uppercase">Solicitar orçamento <ArrowUpRight size={13} /></a>
+          </div>
+        )}
+        {isAudioService && !selected && (
+          <div className="border-t border-border px-5 md:px-8 py-2 flex items-center justify-end flex-shrink-0">
+            <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary font-semibold text-xs tracking-wider uppercase">Solicitar produção <ArrowUpRight size={13} /></a>
           </div>
         )}
       </div>
@@ -2043,7 +2140,7 @@ function PortfolioApp() {
 
       <PublishProgressModal open={publishOpen} steps={publishSteps} onClose={() => setPublishOpen(false)} />
       <AdminLoginModal open={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setAdminMode(true); toast.success("Admin autenticado."); addLog("success", "Admin autenticado."); }} />
-      <GalleryModal service={galleryService} allProjects={allProjects} initialItem={galleryInitialItem} onClose={() => { setGalleryService(null); setGalleryInitialItem(null); }} showAdmin={adminMode} onDelete={handleDeleteProject} onTogglePin={handleTogglePin} pinned={pinned} />
+      <GalleryModal service={galleryService} allProjects={allProjects} audios={cms.audios} initialItem={galleryInitialItem} onClose={() => { setGalleryService(null); setGalleryInitialItem(null); }} showAdmin={adminMode} onDelete={handleDeleteProject} onDeleteAudio={handleDeleteAudio} onTogglePin={handleTogglePin} pinned={pinned} />
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSave={handleAddProject} onSaveAudio={handleAddAudio} uploadFile={uploadFile} ghConfigured={ghOk} />
       <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} />
 
@@ -2240,32 +2337,37 @@ function PortfolioApp() {
       </section>
 
       {/* ── DIFERENCIAIS ── */}
-      <section id="diferenciais" className="py-16 md:py-28">
-        <div className="max-w-6xl mx-auto px-5 md:px-6">
+      <section id="diferenciais" className="py-16 md:py-28 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-5 md:px-6 overflow-hidden">
           <FadeIn><SectionLabel>Por que eu?</SectionLabel></FadeIn>
-          <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-start">
+          {/* overflow-hidden em cada coluna isola qualquer scroll interno */}
+          <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-start w-full">
             <FadeIn delay={60}>
-              <div className="min-w-0">
-                {/* Heading — responsive clamp prevents overflow */}
+              {/* min-w-0 + overflow-hidden garantem que o AudioCarousel não expanda o pai */}
+              <div className="min-w-0 overflow-hidden w-full">
                 <h2
-                  className="font-black uppercase text-foreground leading-none mb-5 break-words"
-                  style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "clamp(2rem, 8vw, 4rem)" }}
+                  className="font-black uppercase text-foreground leading-tight mb-5"
+                  style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "clamp(1.8rem, 7.5vw, 4rem)", wordBreak: "break-word", overflowWrap: "break-word" }}
                 >
                   {content.difHeading1}<br />{content.difHeading2}<br /><span className="text-primary">{content.difHeading3}</span>
                 </h2>
-                <p className="text-muted-foreground font-light text-sm md:text-base leading-relaxed mb-6 md:mb-8 break-words">{content.difSubtext}</p>
-                <AudioCarousel audios={cms.audios} showAdmin={adminMode} onDelete={handleDeleteAudio} />
+                <p className="text-muted-foreground font-light text-sm md:text-base leading-relaxed mb-6 md:mb-8" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{content.difSubtext}</p>
+                {/* Wrapper com overflow-hidden para o carrossel — nunca expande além da coluna */}
+                <div className="w-full overflow-hidden">
+                  <AudioCarousel audios={cms.audios} showAdmin={adminMode} onDelete={handleDeleteAudio} />
+                </div>
               </div>
             </FadeIn>
-            <div className="space-y-0 min-w-0">
+            {/* Coluna das vantagens — confinada com overflow-hidden */}
+            <div className="space-y-0 min-w-0 overflow-hidden w-full">
               {advantages.map((adv, i) => (
                 <FadeIn key={adv.num} delay={80 + i * 60}>
                   <div className="border-b border-border py-5 md:py-7">
-                    <div className="flex items-start gap-4 md:gap-5">
+                    <div className="flex items-start gap-4 md:gap-5 w-full overflow-hidden">
                       <span className="font-mono text-[10px] text-primary tracking-widest mt-1 flex-shrink-0">{adv.num}</span>
-                      <div className="min-w-0">
-                        <h3 className="text-lg md:text-xl font-black uppercase text-foreground mb-1 leading-tight break-words" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{adv.title}</h3>
-                        <p className="text-sm text-muted-foreground font-light leading-relaxed break-words">{adv.body}</p>
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <h3 className="font-black uppercase text-foreground mb-1 leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "clamp(1rem, 4vw, 1.25rem)", wordBreak: "break-word" }}>{adv.title}</h3>
+                        <p className="text-sm text-muted-foreground font-light leading-relaxed" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{adv.body}</p>
                       </div>
                     </div>
                   </div>

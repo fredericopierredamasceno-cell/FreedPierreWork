@@ -23,7 +23,7 @@
     "footerCopy": "© 2026 Frederico Pierre · Design · Motion Designer · Video Maker · Audiovisual"
   },
   "theme": {
-    "primary": "#960018",
+    "primary": "#E8863A",
     "background": "#07080F",
     "foreground": "#EDE9E2",
     "card": "#0F111A",
@@ -31,32 +31,8 @@
     "border": "rgba(237,233,226,0.08)"
   },
   "projects": [],
-  "audios": [
-    {
-      "id": "audio-1785972493016",
-      "title": "Gta Style -Beat",
-      "artist": "Freed Pierre",
-      "url": "/uploads/audio/1785972486061-Gta_Style.mp3",
-      "coverUrl": "/uploads/images/1785972490657-00012-3211548865.png",
-      "createdAt": 1785972493016
-    },
-    {
-      "id": "audio-1785972374318",
-      "title": "Me and My Crew - Mix",
-      "artist": "Desconhecido",
-      "url": "/uploads/audio/1785972369274-Me_And_My_Crew_Mix_Estudo.mp3",
-      "createdAt": 1785972374318
-    },
-    {
-      "id": "audio-1785972295343",
-      "title": "Nice Bass",
-      "artist": "Freed Pierre",
-      "url": "/uploads/audio/1785972285579-Nice_Bass.mp3",
-      "coverUrl": "/uploads/images/1785972293678-f17bd481-6071-488e-bfc8-481f06631dcf.jpeg",
-      "createdAt": 1785972295343
-    }
-  ],
   "pinned": [],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-05T23:28:13.512Z"
+  "audio": null,
+  "updatedAt": "2026-07-31T00:00:00.000Z"
 }
