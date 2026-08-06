@@ -833,20 +833,102 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
+const BOOT_SEQUENCE = [
+  "INICIALIZANDO SISTEMA...",
+  "MONTANDO MÓDULO DE DESIGN...",
+  "CARREGANDO ASSETS DE VÍDEO...",
+  "SINCRONIZANDO TRILHAS DE ÁUDIO...",
+  "RENDERIZANDO MOTION GRAPHICS...",
+  "COMPILANDO PORTFÓLIO...",
+  "SISTEMA PRONTO.",
+];
+
 function LoadingScreen() {
-  const [dots, setDots] = useState(".");
-  useEffect(() => { const t = setInterval(() => setDots(d => d.length >= 3 ? "." : d + "."), 500); return () => clearInterval(t); }, []);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setProgress(p => (p >= 100 ? 100 : Math.min(100, p + Math.random() * 9 + 3)));
+    }, 220);
+    return () => clearInterval(t);
+  }, []);
+
+  const lineIndex = Math.min(BOOT_SEQUENCE.length - 1, Math.floor((progress / 100) * BOOT_SEQUENCE.length));
+  const visibleLines = BOOT_SEQUENCE.slice(0, lineIndex + 1).slice(-4);
+
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-8">
-      <div className="relative w-16 h-16">
-        <div className="absolute inset-0 border-2 border-border" />
-        <div className="absolute inset-0 border-2 border-primary/60 animate-spin" style={{ animationDuration: "3s", clipPath: "inset(0 0 50% 50%)" }} />
-        <div className="absolute inset-2 flex items-center justify-center"><img src={logoImg} alt="" className="w-8 h-auto brightness-200 opacity-70" /></div>
+    <div className="fixed inset-0 z-[200] bg-background flex items-center justify-center overflow-hidden">
+      {/* scanlines CRT */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "repeating-linear-gradient(0deg, #fff 0px, #fff 1px, transparent 1px, transparent 3px)" }} />
+      {/* grid de fundo com vinheta radial */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.18]"
+        style={{
+          backgroundImage: "linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)",
+          backgroundSize: "42px 42px",
+          maskImage: "radial-gradient(circle at center, black, transparent 72%)",
+          WebkitMaskImage: "radial-gradient(circle at center, black, transparent 72%)",
+        }}
+      />
+
+      {/* cantos HUD */}
+      <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-primary/40" />
+      <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-primary/40" />
+      <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-primary/40" />
+      <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-primary/40" />
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 font-mono text-[9px] text-muted-foreground tracking-[0.35em] uppercase hidden sm:block">Rec ● Portfólio.sys</div>
+      <div className="absolute bottom-6 right-1/2 translate-x-1/2 font-mono text-[9px] text-muted-foreground tracking-[0.35em] uppercase hidden sm:block">V2.0.26</div>
+
+      <div className="relative z-10 w-[88%] max-w-sm flex flex-col items-center gap-9">
+        {/* logo com radar/scan */}
+        <div className="relative w-32 h-32 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full border border-primary/15" />
+          <div className="absolute inset-3 rounded-full border border-primary/10" />
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: "conic-gradient(from 0deg, transparent 0%, var(--primary) 10%, transparent 22%)",
+              maskImage: "radial-gradient(circle, transparent 58%, black 60%, black 100%)",
+              WebkitMaskImage: "radial-gradient(circle, transparent 58%, black 60%, black 100%)",
+              animation: "fp-radar-spin 2.2s linear infinite",
+            }}
+          />
+          <img src={logoImg} alt="" className="relative z-10 h-10 w-auto brightness-200" style={{ animation: "fp-flicker 3.4s infinite" }} />
+        </div>
+
+        {/* log de boot estilo terminal */}
+        <div className="w-full h-[72px] flex flex-col justify-end font-mono text-[10px] tracking-widest overflow-hidden">
+          {visibleLines.map((line, i) => {
+            const isLast = i === visibleLines.length - 1;
+            return (
+              <div key={line} className={`truncate ${isLast ? "text-primary" : "text-muted-foreground opacity-40"}`}>
+                {isLast ? "> " : "✓ "}{line}{isLast && <span className="inline-block w-1.5 h-2.5 bg-primary ml-1 align-middle" style={{ animation: "fp-caret 0.9s steps(1) infinite" }} />}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* barra de progresso HUD */}
+        <div className="w-full">
+          <div className="flex justify-between font-mono text-[10px] text-primary tracking-[0.3em] mb-2">
+            <span>BOOT.EXE</span>
+            <span className="tabular-nums">{Math.floor(progress)}%</span>
+          </div>
+          <div className="w-full h-2 bg-muted/40 border border-primary/30 relative overflow-hidden">
+            <div className="h-full bg-primary transition-all duration-150 ease-out" style={{ width: `${progress}%`, boxShadow: "0 0 14px var(--primary)" }} />
+            <div className="absolute inset-0 flex">
+              {Array.from({ length: 24 }).map((_, i) => <div key={i} className="flex-1 border-r border-background/50 last:border-r-0" />)}
+            </div>
+          </div>
+          <div className="mt-3 text-center font-mono text-[9px] text-muted-foreground tracking-[0.25em] uppercase">Freed Pierre · Design / Motion / Vídeo / Áudio</div>
+        </div>
       </div>
-      <div className="text-center">
-        <div className="font-mono text-[10px] text-primary tracking-[0.4em] uppercase mb-2">Freed Pierre · Portfólio</div>
-        <p className="font-mono text-[10px] text-muted-foreground tracking-widest">Carregando{dots}</p>
-      </div>
+
+      <style>{`
+        @keyframes fp-radar-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes fp-flicker { 0%,100%{opacity:1} 91%{opacity:1} 92%{opacity:.35} 93%{opacity:1} 96%{opacity:.55} 97%{opacity:1} }
+        @keyframes fp-caret { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+      `}</style>
     </div>
   );
 }
@@ -2620,16 +2702,6 @@ function PortfolioApp() {
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSave={handleAddProject} onSaveAudio={handleAddAudio} uploadFile={uploadFile} ghConfigured={ghOk} />
       <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} />
 
-      {/* Floating "Disponível" badge — fixed bottom-right, visible everywhere */}
-      <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-background border border-primary/60 px-4 py-2 shadow-lg hover:border-primary transition-colors group"
-        style={{ backdropFilter: "blur(8px)" }}
-      >
-        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse flex-shrink-0" />
-        <span className="font-mono text-[10px] text-primary tracking-[0.2em] uppercase group-hover:text-primary/80">{content.heroBadge}</span>
-        <ArrowUpRight size={10} className="text-primary/70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-      </a>
-
       {/* Progress bar */}
       <div className="fixed top-0 left-0 h-[2px] bg-primary z-[100]" style={{ width: `${progress * 100}%`, transition: "width 60ms linear" }} />
 
@@ -2917,10 +2989,6 @@ function PortfolioApp() {
               <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle size={18} /></a>
               <a href="mailto:fredericopierredamasceno@gmail.com" className="text-muted-foreground hover:text-primary transition-colors"><Mail size={18} /></a>
             </div>
-            <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-primary/50 px-4 py-2 hover:border-primary transition-colors">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              <span className="font-mono text-[10px] text-primary tracking-[0.2em] uppercase">{content.heroBadge}</span>
-            </a>
           </div>
           <div className="hidden md:grid grid-cols-3 items-center">
             <button onClick={() => scrollTo("#hero")}><img src={logoImg} alt="Freed Pierre" className="h-10 w-auto brightness-200 opacity-80 hover:opacity-100 transition-opacity" /></button>
@@ -2928,10 +2996,6 @@ function PortfolioApp() {
               {content.footerCopy}{adminMode && <span className="block text-primary mt-0.5">ADMIN ATIVO</span>}
             </p>
             <div className="flex justify-end items-center gap-4">
-              <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-primary/50 px-3 py-1.5 hover:border-primary transition-colors">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                <span className="font-mono text-[9px] text-primary tracking-[0.2em] uppercase">{content.heroBadge}</span>
-              </a>
               <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle size={16} /></a>
               <a href="mailto:fredericopierredamasceno@gmail.com" className="text-muted-foreground hover:text-primary transition-colors"><Mail size={16} /></a>
             </div>
