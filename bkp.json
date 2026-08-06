@@ -147,6 +147,15 @@
   ],
   "audios": [
     {
+      "id": "audio-1786047410609",
+      "title": "Trap Maybe",
+      "artist": "Faell Cortes - Freed Pierre - Kevin Jones",
+      "genre": "Trap",
+      "url": "/uploads/audio/1786047401624-Trap_Maybe_com_vozes__Mix_Foda__.mp3",
+      "coverUrl": "/uploads/images/1786047408132-00012-3211548865.png",
+      "createdAt": 1786047410609
+    },
+    {
       "id": "audio-1786027013066",
       "title": "Nice Bass",
       "artist": "Freed Pierre",
@@ -180,5 +189,5 @@
     "proj-1786031156532"
   ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-06T15:45:57.046Z"
+  "updatedAt": "2026-08-06T20:16:51.130Z"
 }
