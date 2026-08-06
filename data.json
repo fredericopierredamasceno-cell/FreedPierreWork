@@ -99,6 +99,16 @@
   ],
   "projects": [
     {
+      "id": "proj-1786031156532",
+      "title": "Alienado UsBR - Capa de single animada",
+      "description": "Desenvolvida para o lançamento do single **\"Alienado\"**, da UsBR, esta capa animada nasceu de um processo colaborativo de direção criativa, passando pela concepção da ideia, desenvolvimento da ilustração, definição da identidade visual, paleta de cores e produção artística. Após a finalização da arte, o projeto ganhou uma nova dimensão por meio da animação, transformando uma capa estática em uma peça visual impactante para divulgação nas plataformas digitais.\n\nO objetivo foi ampliar a presença do lançamento, criando um conteúdo capaz de chamar a atenção do público em redes sociais, YouTube e serviços de streaming, sem perder a essência da identidade construída para o single.\n\nGravada no estúdio Pills Rec. e nos estúdios da EMP – Escola de Música Popular, em Belo Horizonte (MG), **\"Alienado\"** representa um projeto em que design, ilustração e animação trabalharam em conjunto para fortalecer a comunicação visual do lançamento. O resultado demonstra como uma capa pode ir além da arte estática e se tornar uma ferramenta estratégica de divulgação.",
+      "category": "Motion Design",
+      "mediaType": "video",
+      "mediaUrl": "/uploads/videos/1786031140297-Capa_Animada_LR.mp4",
+      "thumbUrl": "/uploads/images/1786031152875-Capa_Alienado_Oficial.jpg",
+      "createdAt": 1786031156532
+    },
+    {
       "id": "proj-1786029333026",
       "title": "Game - Tchô Tchô MC Feat. Freed Pierre",
       "description": "Inspirado no universo dos games e do pôquer, este lyric video em motion foi desenvolvido para dar vida à música **\"Game\"**, de Tchô Tchô MC e Freed Pierre, gravada no estúdio Pills Rec. O projeto mistura referências aos jogos eletrônicos, cartas e apostas com animações tipográficas e elementos visuais que acompanham a narrativa da canção, reforçando cada rima e criando uma identidade marcante do início ao fim.\n\nAlém da animação das letras, o videoclipe apresenta uma narrativa visual que conecta todos esses universos e culmina em um desfecho totalmente animado. Cada cena foi planejada para tornar a experiência mais dinâmica e envolvente, valorizando tanto a música quanto sua proposta artística.\n\nEste foi um projeto bastate desafiador, exigindo um trabalho minucioso de direção criativa, concept, animação e sincronização visual. O resultado é uma peça que representa meu cuidado em transformar ideias em experiências visuais memoráveis e que ocupa um lugar especial no meu portfólio.",
@@ -166,8 +176,9 @@
   ],
   "pinned": [
     "proj-1786028389594",
-    "proj-1786029333026"
+    "proj-1786029333026",
+    "proj-1786031156532"
   ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-06T15:15:33.683Z"
+  "updatedAt": "2026-08-06T15:45:57.046Z"
 }
