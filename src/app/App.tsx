@@ -36,8 +36,9 @@ import logoImg from "../imports/Logo_Freed_Pierre.png";
 ═══════════════════════════════════════════════════════════════════ */
 
 // Branch dedicado ao conteúdo admin — completamente separado do código
-const CMS_BRANCH = "cms-data"; // Figma Make NUNCA commita neste branch
-const CMS_FILE   = "data.json"; // arquivo simples dentro do branch cms-data
+const CMS_BRANCH = "cms-data";
+const CMS_FILE   = "data.json";
+const BKP_FILE   = "bkp.json";
 
 const GH_CFG_KEY   = "fp_gh_cfg";
 const GH_TOKEN_KEY = "fp_gh_tok";
@@ -81,13 +82,31 @@ async function ghGetSHA(cfg: GitHubConfig, path: string): Promise<string | undef
   return undefined;
 }
 
-// SHA do arquivo no branch CMS (conteúdo admin)
-async function ghGetCMSSHA(cfg: GitHubConfig): Promise<string | undefined> {
+// SHA de qualquer arquivo no branch cms-data
+async function ghGetCMSSHA(cfg: GitHubConfig, file = CMS_FILE): Promise<string | undefined> {
   try {
-    const r = await fetch(`${GH_API(cfg, CMS_FILE)}?ref=${CMS_BRANCH}`, { headers: GH_HEADERS(cfg.token) });
+    const r = await fetch(
+      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${file}?ref=${CMS_BRANCH}`,
+      { headers: GH_HEADERS(cfg.token) }
+    );
     if (r.ok) return (await r.json()).sha;
   } catch {}
   return undefined;
+}
+
+// Grava qualquer JSON no branch cms-data — usado para data.json e bkp.json
+async function ghWriteCMSFile(cfg: GitHubConfig, file: string, data: CMSData, msg: string): Promise<boolean> {
+  try {
+    const sha = await ghGetCMSSHA(cfg, file);
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    const body: Record<string, unknown> = { message: msg, content, branch: CMS_BRANCH };
+    if (sha) body.sha = sha;
+    const r = await fetch(
+      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${file}`,
+      { method: "PUT", headers: GH_HEADERS(cfg.token), body: JSON.stringify(body) }
+    );
+    return r.ok;
+  } catch { return false; }
 }
 
 // Garante que o branch cms-data existe — cria a partir do branch de código se necessário
@@ -176,44 +195,41 @@ async function ghUploadBinary(
   } catch (err) { clearInterval(ticker); throw err; }
 }
 
-// Lê o CMS SEMPRE do branch cms-data — nunca do branch de código
-async function ghFetchCMS(cfg: Pick<GitHubConfig, "owner" | "repo" | "token">): Promise<{ data: CMSData; sha: string } | null> {
-  try {
-    const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
-    if (cfg.token) headers.Authorization = `Bearer ${cfg.token}`;
-    const r = await fetch(
-      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${CMS_FILE}?ref=${CMS_BRANCH}`,
-      { headers },
-    );
-    if (!r.ok) return null;
-    const json = await r.json();
-    const base64 = json.content.replace(/\n/g, "");
-    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-    const decoded = JSON.parse(new TextDecoder().decode(bytes));
-    return { data: makeCMSData(decoded), sha: json.sha };
-  } catch { return null; }
+// Lê do cms-data: tenta data.json, fallback automático para bkp.json
+async function ghFetchCMS(cfg: Pick<GitHubConfig, "owner" | "repo" | "token">): Promise<{ data: CMSData; sha: string; fromBackup?: boolean } | null> {
+  const tryRead = async (file: string) => {
+    try {
+      const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
+      if (cfg.token) headers.Authorization = `Bearer ${cfg.token}`;
+      const r = await fetch(
+        `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${file}?ref=${CMS_BRANCH}`,
+        { headers }
+      );
+      if (!r.ok) return null;
+      const json = await r.json();
+      const bytes = Uint8Array.from(atob(json.content.replace(/\n/g, "")), c => c.charCodeAt(0));
+      return { parsed: JSON.parse(new TextDecoder().decode(bytes)), sha: json.sha as string };
+    } catch { return null; }
+  };
+  const main = await tryRead(CMS_FILE);
+  if (main) {
+    const hasAdminData = main.parsed.theme || main.parsed.audios?.length || main.parsed.projects?.length;
+    if (hasAdminData) return { data: makeCMSData(main.parsed), sha: main.sha };
+  }
+  const bkp = await tryRead(BKP_FILE);
+  if (bkp) return { data: makeCMSData(bkp.parsed), sha: bkp.sha, fromBackup: true };
+  if (main) return { data: makeCMSData(main.parsed), sha: main.sha };
+  return null;
 }
 
-// Salva o CMS SEMPRE no branch cms-data — Figma Make não toca este branch
+// Salva no cms-data: grava data.json (ativo) + bkp.json (backup permanente)
 async function ghCommitCMS(cfg: GitHubConfig, data: CMSData): Promise<{ ok: boolean; error?: string }> {
   try {
-    // Garante que o branch cms-data existe antes de commitar
     await ghEnsureCMSBranch(cfg);
-    const sha = await ghGetCMSSHA(cfg);
-    const json = JSON.stringify(data, null, 2);
-    const content = btoa(unescape(encodeURIComponent(json)));
-    // Usa GH_API mas com CMS_BRANCH explícito no body
-    const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${CMS_FILE}`;
-    const body: Record<string, unknown> = {
-      message: "CMS: Atualização de conteúdo [admin]",
-      content,
-      branch: CMS_BRANCH, // ← SEMPRE branch cms-data, NUNCA o branch do código
-    };
-    if (sha) body.sha = sha;
-    const r = await fetch(url, { method: "PUT", headers: GH_HEADERS(cfg.token), body: JSON.stringify(body) });
-    if (r.ok) return { ok: true };
-    const e = await r.json().catch(() => ({}));
-    return { ok: false, error: (e as Record<string, string>).message || `HTTP ${r.status}` };
+    const ok = await ghWriteCMSFile(cfg, CMS_FILE, data, "CMS: dados admin [cms-data]");
+    if (!ok) return { ok: false, error: "Falha ao gravar data.json" };
+    ghWriteCMSFile(cfg, BKP_FILE, data, "BKP: backup admin [cms-data]").catch(() => {});
+    return { ok: true };
   } catch (e: unknown) { return { ok: false, error: e instanceof Error ? e.message : "Erro de rede." }; }
 }
 
@@ -413,8 +429,19 @@ function useCMS() {
     if (cfg?.owner && cfg?.repo) {
       addLog("info", `Sincronizando GitHub (${cfg.owner}/${cfg.repo}) — lendo branch '${CMS_BRANCH}' (isolado do Figma Make).`);
       ghFetchCMS(cfg).then(result => {
-        if (result) { setCms(result.data); setLoading(false); addLog("success", `✓ CMS carregado do branch '${CMS_BRANCH}' — seguro de atualizações do Figma.`); }
-        else { addLog("warn", `Branch '${CMS_BRANCH}' ainda não existe ou GitHub indisponível — usando defaults locais.`); fetchLocal(); }
+        if (result) {
+          setCms(result.data);
+          setLoading(false);
+          if (result.fromBackup) {
+            addLog("warn", "⚠ bkp.json restaurou os dados — regravando data.json.");
+            toast.info("Dados admin restaurados do backup automaticamente.", { duration: 4000 });
+            ghWriteCMSFile(cfg as GitHubConfig, CMS_FILE, result.data, "RESTORE: bkp->data [auto]").catch(() => {});
+          } else {
+            addLog("success", "✓ CMS carregado do branch cms-data.");
+          }
+        } else {
+          addLog("warn", "Branch cms-data nao existe — usando defaults."); fetchLocal();
+        }
       }).catch(() => fetchLocal());
     } else { fetchLocal(); }
 
@@ -511,11 +538,27 @@ function useCMS() {
     toast.error(`Branch '${CMS_BRANCH}' não encontrado. Publique algo primeiro.`); return false;
   }, [ghConfig, addLog]);
 
+  // Salva silenciosamente no cms-data — sem abrir modal, sem interromper o admin
+  const silentSave = useCallback(async (data: CMSData): Promise<void> => {
+    if (!ghConfig?.token || !ghConfig?.owner || !ghConfig?.repo) return;
+    try {
+      await ghEnsureCMSBranch(ghConfig);
+      const result = await ghCommitCMS(ghConfig, data);
+      if (result.ok) {
+        setSaveStatus("saved");
+        addLog("success", "Auto-save: conteudo persistido em cms-data.");
+        toast.success("Salvo automaticamente", { duration: 1500 });
+      } else {
+        addLog("warn", `Auto-save falhou: ${result.error}`);
+      }
+    } catch { addLog("warn", "Auto-save: erro de rede."); }
+  }, [ghConfig, addLog]);
+
   return {
     ghConfig, setGhConfig, clearGhConfig: useCallback(() => { clearGHConfig(); setGhConfigState(null); }, []),
     cms, setCms, loading, saveStatus, saveError,
     logs, addLog, publishSteps, publishOpen, setPublishOpen,
-    publish: doPublish, uploadFile, deleteFile, syncFromGitHub,
+    publish: doPublish, uploadFile, deleteFile, syncFromGitHub, silentSave,
   };
 }
 
@@ -1601,7 +1644,7 @@ function AudioGalleryView({ audios, showAdmin, onDeleteAudio }: { audios: CMSAud
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {audioEl}
       {/* Genre filter */}
       {genres.length > 1 && (
@@ -1668,7 +1711,7 @@ function GalleryModal({ service, allProjects, audios, initialItem, onClose, show
           <button onClick={onClose} className="w-9 h-9 flex-shrink-0 flex items-center justify-center border border-border text-muted-foreground"><X size={16} /></button>
         </div>
 
-        <div className="overflow-y-auto flex-1">
+        <div className={`flex-1 min-h-0 ${isAudioService && !selected ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
           {selected ? (
             <div className="flex flex-col md:grid md:grid-cols-[1fr_320px]">
               <div className="bg-black flex items-center justify-center" style={{ minHeight: "clamp(200px,42vw,380px)" }}>
@@ -1712,9 +1755,7 @@ function GalleryModal({ service, allProjects, audios, initialItem, onClose, show
           )}
           {/* Galeria de áudio — renderizada quando é Produção Fonográfica e nada está selecionado */}
           {isAudioService && !selected && (
-            <div className="flex-1 overflow-hidden flex flex-col">
-              <AudioGalleryView audios={audios} showAdmin={showAdmin} onDeleteAudio={onDeleteAudio} />
-            </div>
+            <AudioGalleryView audios={audios} showAdmin={showAdmin} onDeleteAudio={onDeleteAudio} />
           )}
         </div>
 
@@ -2255,7 +2296,7 @@ function PortfolioApp() {
   const [showLogin, setShowLogin] = useState(false);
   const progress = useScrollProgress();
 
-  const { ghConfig, setGhConfig, clearGhConfig, cms, setCms, loading, saveStatus, saveError, logs, addLog, publishSteps, publishOpen, setPublishOpen, publish, uploadFile, deleteFile, syncFromGitHub } = useCMS();
+  const { ghConfig, setGhConfig, clearGhConfig, cms, setCms, loading, saveStatus, saveError, logs, addLog, publishSteps, publishOpen, setPublishOpen, publish, uploadFile, deleteFile, syncFromGitHub, silentSave } = useCMS();
 
   const content = cms.content;
   const pinned = new Set(cms.pinned);
@@ -2280,6 +2321,29 @@ function PortfolioApp() {
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", fn, { passive: true }); return () => window.removeEventListener("scroll", fn);
+  }, []);
+
+  // Auto-save: toda mudança admin salva no cms-data apos 2s de inatividade
+  // Figma Make NUNCA commita no branch cms-data — dados admin ficam seguros
+  const _autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const _pendingSave = useRef<CMSData | null>(null);
+  const _cmsLoaded = useRef(false);
+  useEffect(() => {
+    if (!_cmsLoaded.current) { _cmsLoaded.current = true; return; }
+    if (!adminMode || !ghConfig?.token) return;
+    _pendingSave.current = cms;
+    if (_autoSaveTimer.current) clearTimeout(_autoSaveTimer.current);
+    _autoSaveTimer.current = setTimeout(() => { silentSave(cms); _pendingSave.current = null; }, 2000);
+    return () => { if (_autoSaveTimer.current) clearTimeout(_autoSaveTimer.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cms]);
+
+  // Flush ao sair da pagina — evita perder mudancas nao salvas ainda
+  useEffect(() => {
+    const flush = () => { if (_pendingSave.current) silentSave(_pendingSave.current); };
+    window.addEventListener("beforeunload", flush);
+    return () => window.removeEventListener("beforeunload", flush);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const scrollTo = (href: string) => { setMenuOpen(false); document.querySelector(href)?.scrollIntoView({ behavior: "smooth" }); };
@@ -2392,10 +2456,6 @@ function PortfolioApp() {
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundSize: "200px" }} />
 
         <div className="relative z-10 w-full max-w-6xl mx-auto px-5 md:px-8 text-left pt-20 md:pt-0">
-          <div className="inline-flex items-center gap-2 border border-primary/40 px-4 py-1.5 mb-6 md:mb-10">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            <span className="font-mono text-[10px] text-primary tracking-[0.25em] uppercase">{content.heroBadge}</span>
-          </div>
           <h1 className="font-black uppercase leading-[0.88] mb-5 md:mb-8 text-left" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
             <span className="block text-foreground" style={{ fontSize: "clamp(2rem, 6.7vw, 6rem)" }}>{content.heroLine1}</span>
             <span className="block text-primary" style={{ fontSize: "clamp(2rem, 6.7vw, 6rem)" }}>{content.heroLine2}</span>
@@ -2630,6 +2690,10 @@ function PortfolioApp() {
               <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle size={18} /></a>
               <a href="mailto:fredericopierredamasceno@gmail.com" className="text-muted-foreground hover:text-primary transition-colors"><Mail size={18} /></a>
             </div>
+            <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-primary/50 px-4 py-2 hover:border-primary transition-colors">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="font-mono text-[10px] text-primary tracking-[0.2em] uppercase">{content.heroBadge}</span>
+            </a>
           </div>
           <div className="hidden md:grid grid-cols-3 items-center">
             <button onClick={() => scrollTo("#hero")}><img src={logoImg} alt="Freed Pierre" className="h-10 w-auto brightness-200 opacity-80 hover:opacity-100 transition-opacity" /></button>
@@ -2637,6 +2701,10 @@ function PortfolioApp() {
               {content.footerCopy}{adminMode && <span className="block text-primary mt-0.5">ADMIN ATIVO</span>}
             </p>
             <div className="flex justify-end items-center gap-4">
+              <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-primary/50 px-3 py-1.5 hover:border-primary transition-colors">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                <span className="font-mono text-[9px] text-primary tracking-[0.2em] uppercase">{content.heroBadge}</span>
+              </a>
               <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle size={16} /></a>
               <a href="mailto:fredericopierredamasceno@gmail.com" className="text-muted-foreground hover:text-primary transition-colors"><Mail size={16} /></a>
             </div>
