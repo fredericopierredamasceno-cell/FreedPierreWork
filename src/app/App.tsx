@@ -43,6 +43,11 @@ const BKP_FILE   = "bkp.json";
 const GH_CFG_KEY      = "fp_gh_cfg";
 const GH_TOKEN_KEY    = "fp_gh_tok";
 const MAX_FILE_BYTES  = 25 * 1024 * 1024;
+// Resolução máxima segura para decodificação garantida em hardware mobile
+// (iOS/Android). Vídeos maiores ultrapassam o nível H.264 suportado pelos
+// decoders de hardware de celulares e falham silenciosamente no <video>
+// mobile, mesmo funcionando normalmente no desktop (decodificação via software).
+const MAX_VIDEO_DIMENSION = 1920;
 const PUBLIC_CFG_PATH = "public/cms-config.json";
 
 interface GitHubConfig { owner: string; repo: string; branch: string; token: string; }
@@ -173,6 +178,27 @@ async function fileToBase64(file: File, onProgress: (p: UploadProgress) => void)
     };
     reader.onerror = () => reject(new Error("Falha ao ler o arquivo."));
     reader.readAsDataURL(file);
+  });
+}
+
+// Lê apenas as dimensões do vídeo (via metadata do próprio navegador) antes do
+// upload. Resoluções muito altas (ex: exports quadrados de 3000x3000 de apps
+// de IA/edição) forçam o encoder a usar um nível H.264 que os decoders de
+// hardware de celulares (iOS e a maioria dos Android) recusam reproduzir —
+// o vídeo funciona no desktop (decodificação por software, mais tolerante)
+// e simplesmente não reproduz no mobile, sem erro visível para o usuário.
+function probeVideoDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => {
+      const dims = { width: v.videoWidth, height: v.videoHeight };
+      URL.revokeObjectURL(url);
+      resolve(dims);
+    };
+    v.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Não foi possível ler o vídeo.")); };
+    v.src = url;
   });
 }
 
@@ -1007,6 +1033,7 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
   isPinned?: boolean; showAdmin?: boolean; onClick?: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
   const isEmbed = item.mediaType === "embed";
   const isMultiImage = item.mediaType === "image" && item.images && item.images.length > 1;
@@ -1024,8 +1051,25 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
     if (item.mediaType === "video" && videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0; }
   }, [item.mediaType]);
 
+  // Dispositivos touch não disparam onMouseEnter — sem isso o preview em
+  // vídeo nunca tocava no mobile (só ao abrir o modal via tap). Replica o
+  // comportamento de hover do desktop quando o card entra na viewport.
+  useEffect(() => {
+    if (item.mediaType !== "video" || isMultiImage) return;
+    if (typeof window === "undefined" || !window.matchMedia || window.matchMedia("(hover: hover)").matches) return;
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) startPlay(); else stopPlay(); },
+      { threshold: 0.6 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [item.mediaType, isMultiImage, startPlay, stopPlay]);
+
   return (
     <div
+      ref={cardRef}
       className="relative bg-card group overflow-hidden aspect-video cursor-pointer select-none"
       onMouseEnter={startPlay} onMouseLeave={stopPlay}
       {...tap}
@@ -1508,6 +1552,8 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [progress2, setProgress2] = useState<UploadProgress | null>(null);
   const [oversize, setOversize] = useState(false);
+  const [incompatibleRes, setIncompatibleRes] = useState<{ width: number; height: number } | null>(null);
+  const [checkingVideo, setCheckingVideo] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [errMsg, setErrMsg] = useState("");
@@ -1516,7 +1562,7 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
     setTitle(""); setDesc(""); setCat(CATEGORIES[0]); setMode("file");
     setMediaFile(null); setThumbFile(null); setExtraImageFiles([]); setAudioFile(null); setAudioCoverFile(null);
     setArtist(""); setGenre(""); setVideoUrl(""); setParsedVideo(null); setThumbImgOk(true);
-    setProgress(null); setProgress2(null); setOversize(false); setBusy(false); setDone(false); setErrMsg("");
+    setProgress(null); setProgress2(null); setOversize(false); setIncompatibleRes(null); setCheckingVideo(false); setBusy(false); setDone(false); setErrMsg("");
   }, []);
 
   useEffect(() => {
@@ -1530,9 +1576,21 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
     setParsedVideo(parseVideoUrl(videoUrl.trim())); setThumbImgOk(true);
   }, [videoUrl]);
 
-  const handleFileChange = (f: File) => {
+  const handleFileChange = async (f: File) => {
+    setIncompatibleRes(null);
     if (f.type.startsWith("video") && f.size > MAX_FILE_BYTES) { setOversize(true); setMediaFile(null); return; }
-    setOversize(false); setMediaFile(f);
+    setOversize(false);
+    if (f.type.startsWith("video")) {
+      setCheckingVideo(true);
+      try {
+        const { width, height } = await probeVideoDimensions(f);
+        if (Math.max(width, height) > MAX_VIDEO_DIMENSION) {
+          setIncompatibleRes({ width, height }); setMediaFile(null); setCheckingVideo(false); return;
+        }
+      } catch { /* se não for possível ler a resolução, deixa o navegador tentar normalmente */ }
+      setCheckingVideo(false);
+    }
+    setMediaFile(f);
   };
 
   const handleSave = async () => {
@@ -1558,6 +1616,7 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
     }
 
     if (!mediaFile || !ghConfigured) { setErrMsg("Configure o GitHub e selecione um arquivo."); setBusy(false); return; }
+    if (incompatibleRes) { setErrMsg("Resolução do vídeo incompatível com celulares. Reduza para até 1920px no lado maior."); setBusy(false); return; }
     const mType = mediaFile.type.startsWith("video") ? "video" : "image";
     const mediaUrl = await uploadFile(mediaFile, mType, setProgress);
     if (!mediaUrl) { setErrMsg("Falha no upload."); setBusy(false); return; }
@@ -1667,12 +1726,14 @@ function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigu
             {mode === "file" && (<>
               <div>
                 <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">{tab === "image" ? "Imagem principal *" : "Vídeo * (até 25 MB)"}</label>
-                <div className={`border-2 border-dashed p-5 text-center cursor-pointer transition-colors ${mediaFile ? "border-primary bg-primary/5" : oversize ? "border-red-500/60" : "border-border hover:border-primary/40"}`} onClick={() => document.getElementById("media-inp")?.click()}>
+                <div className={`border-2 border-dashed p-5 text-center cursor-pointer transition-colors ${mediaFile ? "border-primary bg-primary/5" : (oversize || incompatibleRes) ? "border-red-500/60" : "border-border hover:border-primary/40"}`} onClick={() => document.getElementById("media-inp")?.click()}>
                   <input id="media-inp" type="file" accept={tab === "image" ? "image/*" : "image/*,video/mp4,video/mov,video/webm,video/quicktime"} className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f); e.target.value = ""; }} />
-                  {mediaFile ? <div className="flex items-center justify-center gap-2 text-primary">{mediaFile.type.startsWith("video") ? <VideoIcon size={16} /> : <ImageIcon size={16} />}<span className="text-sm truncate max-w-[200px]">{mediaFile.name}</span></div>
+                  {checkingVideo ? <div className="flex items-center justify-center gap-2 text-muted-foreground"><span className="text-xs font-mono tracking-wider uppercase">Verificando vídeo...</span></div>
+                    : mediaFile ? <div className="flex items-center justify-center gap-2 text-primary">{mediaFile.type.startsWith("video") ? <VideoIcon size={16} /> : <ImageIcon size={16} />}<span className="text-sm truncate max-w-[200px]">{mediaFile.name}</span></div>
                     : <div className="flex flex-col items-center gap-2 text-muted-foreground"><Upload size={20} /><span className="text-xs font-mono tracking-wider uppercase">Toque ou arraste</span></div>}
                 </div>
                 {oversize && <div className="mt-3 border border-red-500/30 bg-red-500/5 p-3"><p className="text-xs text-red-300 font-light flex items-center gap-2"><AlertCircle size={12} />Vídeo &gt; 25 MB — use YouTube ou Vimeo.</p></div>}
+                {incompatibleRes && <div className="mt-3 border border-red-500/30 bg-red-500/5 p-3"><p className="text-xs text-red-300 font-light flex items-center gap-2"><AlertCircle size={12} />Vídeo {incompatibleRes.width}x{incompatibleRes.height} — resolução alta demais, não reproduz em celulares. Reexporte com o lado maior em até {MAX_VIDEO_DIMENSION}px.</p></div>}
                 {progress && <div className="mt-2"><UploadProgressBar progress={progress} /></div>}
               </div>
 
