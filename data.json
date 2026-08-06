@@ -97,7 +97,20 @@
       "body": "Trajetória em agências, gráficas, estúdios e mercado independente. Da teoria à prática em projetos reais."
     }
   ],
-  "projects": [],
+  "projects": [
+    {
+      "id": "proj-1786028389594",
+      "title": "Felix (Verde Victor) - Lariça - Lyric Video",
+      "description": "Mais do que um lyric video, este projeto foi pensado para transformar a música em uma experiência visual. Desenvolvido para o lançamento de \"Lariça\", gravada no estúdio Pills Rec., o trabalho combina concept art, motion design e tipografia animada para fazer com que cada verso acompanhe a intensidade da canção.\n\nCada detalhe foi construído para reforçar a identidade da música e criar uma narrativa visual que prende a atenção do início ao fim. O resultado marcou uma evolução importante na minha trajetória como motion designer e se tornou um dos projetos que melhor representam meu processo criativo e minha forma de unir design, vídeo e música.",
+      "category": "Motion Design",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/H2AGBsBqW3A",
+      "thumbUrl": "https://img.youtube.com/vi/H2AGBsBqW3A/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "H2AGBsBqW3A",
+      "createdAt": 1786028389594
+    }
+  ],
   "audios": [
     {
       "id": "audio-1786027013066",
@@ -127,7 +140,9 @@
       "createdAt": 1785987301656
     }
   ],
-  "pinned": [],
+  "pinned": [
+    "proj-1786028389594"
+  ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-06T14:36:53.593Z"
+  "updatedAt": "2026-08-06T14:59:50.218Z"
 }
