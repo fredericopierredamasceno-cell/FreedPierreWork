@@ -100,16 +100,16 @@
   "projects": [],
   "audios": [
     {
-      "id": "audio-1785979411863",
-      "title": "Nice Bass",
-      "artist": "Freed Pierre",
-      "genre": "Instrumental",
-      "url": "/uploads/audio/1785979405751-Nice_Bass.mp3",
-      "coverUrl": "/uploads/images/1785984231636-00012-3211548865.png",
-      "createdAt": 1785979411863
+      "id": "audio-1785984523796",
+      "title": "Me and my crew - Mix",
+      "artist": "Desconhecido",
+      "genre": "Mix",
+      "url": "/uploads/audio/1785984515386-Me_And_My_Crew_Mix_Estudo.mp3",
+      "coverUrl": "/uploads/images/1785984519869-DSC00171_copiar.jpg",
+      "createdAt": 1785984523796
     }
   ],
   "pinned": [],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-06T02:43:24.896Z"
+  "updatedAt": "2026-08-06T02:48:44.349Z"
 }
