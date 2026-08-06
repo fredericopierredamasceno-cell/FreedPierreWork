@@ -100,6 +100,14 @@
   "projects": [],
   "audios": [
     {
+      "id": "audio-1786026877866",
+      "title": "Me and my crew - Mix",
+      "genre": "Mix",
+      "url": "/uploads/audio/1786026868782-Me_And_My_Crew_Mix_Estudo.mp3",
+      "coverUrl": "/uploads/images/1786026875200-00010-3211548865.png",
+      "createdAt": 1786026877866
+    },
+    {
       "id": "audio-1785987301656",
       "title": "Gta Style - Beat",
       "artist": "Freed Pierre",
@@ -111,5 +119,5 @@
   ],
   "pinned": [],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-06T03:35:02.155Z"
+  "updatedAt": "2026-08-06T14:34:38.537Z"
 }
