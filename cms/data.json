@@ -100,13 +100,13 @@
   "projects": [],
   "audios": [
     {
-      "id": "audio-1785977409653",
-      "title": "GTA Style",
+      "id": "audio-1785977556123",
+      "title": "Crazyyy",
       "artist": "Freed Pierre",
-      "genre": "Beat",
-      "url": "/uploads/audio/1785977402964-Gta_Style.mp3",
-      "coverUrl": "/uploads/images/1785977407033-00020-75290831.png",
-      "createdAt": 1785977409653
+      "genre": "Hip-Hop",
+      "url": "/uploads/audio/1785977548530-Crazyyyy.mp3",
+      "coverUrl": "/uploads/images/1785977553459-00012-3211548865.png",
+      "createdAt": 1785977556123
     },
     {
       "id": "audio-1785977300330",
@@ -120,5 +120,5 @@
   ],
   "pinned": [],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-06T00:54:00.615Z"
+  "updatedAt": "2026-08-06T00:56:37.813Z"
 }
