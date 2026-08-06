@@ -16,20 +16,30 @@ import pizzaVideo from "../imports/Lan_amento_Pizza_Ifood.mp4";
 import logoImg from "../imports/Logo_Freed_Pierre.png";
 
 /* ═══════════════════════════════════════════════════════════════════
-   ARQUITETURA CMS — SEPARAÇÃO CÓDIGO / CONTEÚDO
+   ARQUITETURA CMS — BRANCH DEDICADO (SOLUÇÃO DEFINITIVA)
    ─────────────────────────────────────────────────────────────────
-   • cms/data.json  ← conteúdo admin (GitHub, fora do /public)
-     Figma Make NUNCA toca este arquivo pois não é gerenciado por ele.
-     Commits do Figma afetam apenas src/ e arquivos de config.
-   • public/cms-data.json  ← fallback offline (defaults apenas)
-   • public/uploads/       ← mídias (Figma nunca deleta uploads)
-   • localStorage  : owner/repo/branch
-   • sessionStorage: token (apaga ao fechar o browser)
+   PROBLEMA: Figma Make commita em `main` e pode sobrescrever arquivos
+   da pasta public/ ou qualquer arquivo que ele gerencie.
+
+   SOLUÇÃO: Branch separado `cms-data` que Figma Make NUNCA toca.
+   ─────────────────────────────────────────────────────────────────
+   • Branch `main`      ← código (Figma Make commita aqui — OK)
+   • Branch `cms-data`  ← CONTEÚDO ADMIN EXCLUSIVO
+     - data.json        ← textos, cores, projetos, áudios, config
+     - Figma Make não conhece este branch, nunca commita nele
+     - Apenas o admin escreve neste branch via painel
+   • public/uploads/    ← arquivos de mídia (Figma não apaga arquivos
+                          que ele não gerenciou — safe)
+   ─────────────────────────────────────────────────────────────────
+   localStorage  : owner/repo/codeBranch
+   sessionStorage: token (apaga ao fechar o browser)
 ═══════════════════════════════════════════════════════════════════ */
 
-// Arquivo de dados do CMS fora de public/ — imune a commits do Figma Make
-const CMS_FILE = "cms/data.json";
-const GH_CFG_KEY = "fp_gh_cfg";
+// Branch dedicado ao conteúdo admin — completamente separado do código
+const CMS_BRANCH = "cms-data"; // Figma Make NUNCA commita neste branch
+const CMS_FILE   = "data.json"; // arquivo simples dentro do branch cms-data
+
+const GH_CFG_KEY   = "fp_gh_cfg";
 const GH_TOKEN_KEY = "fp_gh_tok";
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
@@ -62,12 +72,53 @@ const GH_HEADERS = (token: string): Record<string, string> => ({
   "Content-Type": "application/json",
 });
 
+// SHA do arquivo no branch de CÓDIGO (uploads de mídia)
 async function ghGetSHA(cfg: GitHubConfig, path: string): Promise<string | undefined> {
   try {
     const r = await fetch(`${GH_API(cfg, path)}?ref=${cfg.branch}`, { headers: GH_HEADERS(cfg.token) });
     if (r.ok) return (await r.json()).sha;
   } catch {}
   return undefined;
+}
+
+// SHA do arquivo no branch CMS (conteúdo admin)
+async function ghGetCMSSHA(cfg: GitHubConfig): Promise<string | undefined> {
+  try {
+    const r = await fetch(`${GH_API(cfg, CMS_FILE)}?ref=${CMS_BRANCH}`, { headers: GH_HEADERS(cfg.token) });
+    if (r.ok) return (await r.json()).sha;
+  } catch {}
+  return undefined;
+}
+
+// Garante que o branch cms-data existe — cria a partir do branch de código se necessário
+async function ghEnsureCMSBranch(cfg: GitHubConfig): Promise<boolean> {
+  try {
+    // Verifica se branch já existe
+    const check = await fetch(
+      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/git/refs/heads/${CMS_BRANCH}`,
+      { headers: GH_HEADERS(cfg.token) }
+    );
+    if (check.ok) return true;
+    // Branch não existe — precisa do SHA do branch de código para criar
+    const refR = await fetch(
+      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/git/refs/heads/${cfg.branch}`,
+      { headers: GH_HEADERS(cfg.token) }
+    );
+    if (!refR.ok) return false;
+    const refData = await refR.json();
+    const sha = refData.object?.sha;
+    if (!sha) return false;
+    // Cria o branch cms-data
+    const createR = await fetch(
+      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/git/refs`,
+      {
+        method: "POST",
+        headers: GH_HEADERS(cfg.token),
+        body: JSON.stringify({ ref: `refs/heads/${CMS_BRANCH}`, sha }),
+      }
+    );
+    return createR.ok;
+  } catch { return false; }
 }
 
 async function fileToBase64(file: File, onProgress: (p: UploadProgress) => void): Promise<string> {
@@ -125,12 +176,13 @@ async function ghUploadBinary(
   } catch (err) { clearInterval(ticker); throw err; }
 }
 
-async function ghFetchCMS(cfg: Pick<GitHubConfig, "owner" | "repo" | "branch" | "token">): Promise<{ data: CMSData; sha: string } | null> {
+// Lê o CMS SEMPRE do branch cms-data — nunca do branch de código
+async function ghFetchCMS(cfg: Pick<GitHubConfig, "owner" | "repo" | "token">): Promise<{ data: CMSData; sha: string } | null> {
   try {
     const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
     if (cfg.token) headers.Authorization = `Bearer ${cfg.token}`;
     const r = await fetch(
-      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${CMS_FILE}?ref=${cfg.branch}`,
+      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${CMS_FILE}?ref=${CMS_BRANCH}`,
       { headers },
     );
     if (!r.ok) return null;
@@ -142,20 +194,30 @@ async function ghFetchCMS(cfg: Pick<GitHubConfig, "owner" | "repo" | "branch" | 
   } catch { return null; }
 }
 
+// Salva o CMS SEMPRE no branch cms-data — Figma Make não toca este branch
 async function ghCommitCMS(cfg: GitHubConfig, data: CMSData): Promise<{ ok: boolean; error?: string }> {
   try {
-    const sha = await ghGetSHA(cfg, CMS_FILE);
+    // Garante que o branch cms-data existe antes de commitar
+    await ghEnsureCMSBranch(cfg);
+    const sha = await ghGetCMSSHA(cfg);
     const json = JSON.stringify(data, null, 2);
     const content = btoa(unescape(encodeURIComponent(json)));
-    const body: Record<string, unknown> = { message: "CMS: Atualização de conteúdo", content, branch: cfg.branch };
+    // Usa GH_API mas com CMS_BRANCH explícito no body
+    const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${CMS_FILE}`;
+    const body: Record<string, unknown> = {
+      message: "CMS: Atualização de conteúdo [admin]",
+      content,
+      branch: CMS_BRANCH, // ← SEMPRE branch cms-data, NUNCA o branch do código
+    };
     if (sha) body.sha = sha;
-    const r = await fetch(GH_API(cfg, CMS_FILE), { method: "PUT", headers: GH_HEADERS(cfg.token), body: JSON.stringify(body) });
+    const r = await fetch(url, { method: "PUT", headers: GH_HEADERS(cfg.token), body: JSON.stringify(body) });
     if (r.ok) return { ok: true };
     const e = await r.json().catch(() => ({}));
     return { ok: false, error: (e as Record<string, string>).message || `HTTP ${r.status}` };
   } catch (e: unknown) { return { ok: false, error: e instanceof Error ? e.message : "Erro de rede." }; }
 }
 
+// Deleta arquivo de mídia do branch de CÓDIGO (uploads em public/uploads/)
 async function ghDeleteFile(cfg: GitHubConfig, publicPath: string): Promise<void> {
   const repoPath = `public${publicPath}`;
   const sha = await ghGetSHA(cfg, repoPath);
@@ -163,7 +225,7 @@ async function ghDeleteFile(cfg: GitHubConfig, publicPath: string): Promise<void
   await fetch(GH_API(cfg, repoPath), {
     method: "DELETE",
     headers: GH_HEADERS(cfg.token),
-    body: JSON.stringify({ message: `Remove: ${publicPath}`, sha, branch: cfg.branch }),
+    body: JSON.stringify({ message: `Remove mídia: ${publicPath}`, sha, branch: cfg.branch }),
   });
 }
 
@@ -209,6 +271,7 @@ interface CMSAudio {
   id: string; title: string; artist?: string;
   genre?: string; // gênero musical ex: "Trap", "Eletrônico", "Gospel"
   url: string; coverUrl?: string; createdAt: number;
+  hidden?: boolean; // ocultar da visualização pública (admin ainda vê)
 }
 
 interface CMSServiceContent {
@@ -348,10 +411,10 @@ function useCMS() {
     addLog("info", "Carregando portfólio...");
     const cfg = loadGHConfig();
     if (cfg?.owner && cfg?.repo) {
-      addLog("info", `Sincronizando GitHub (${cfg.owner}/${cfg.repo}) — cms/data.json protegido de commits do Figma Make.`);
+      addLog("info", `Sincronizando GitHub (${cfg.owner}/${cfg.repo}) — lendo branch '${CMS_BRANCH}' (isolado do Figma Make).`);
       ghFetchCMS(cfg).then(result => {
-        if (result) { setCms(result.data); setLoading(false); addLog("success", "CMS carregado do GitHub (cms/data.json)."); }
-        else { addLog("warn", "GitHub indisponível — usando arquivo local."); fetchLocal(); }
+        if (result) { setCms(result.data); setLoading(false); addLog("success", `✓ CMS carregado do branch '${CMS_BRANCH}' — seguro de atualizações do Figma.`); }
+        else { addLog("warn", `Branch '${CMS_BRANCH}' ainda não existe ou GitHub indisponível — usando defaults locais.`); fetchLocal(); }
       }).catch(() => fetchLocal());
     } else { fetchLocal(); }
 
@@ -371,18 +434,26 @@ function useCMS() {
     if (!ghConfig.token) { toast.error("Token não informado."); return false; }
     const STEPS: PublishStep[] = [
       { id: "validate", label: "Validando dados...", status: "pending" },
-      { id: "sha", label: "Obtendo referência do repositório...", status: "pending" },
-      { id: "commit", label: "Commitando cms/data.json...", status: "pending" },
-      { id: "push", label: "Enviando alterações...", status: "pending" },
-      { id: "vercel", label: "Vercel iniciando deploy...", status: "pending" },
-      { id: "done", label: "Publicação concluída.", status: "pending" },
+      { id: "branch", label: `Garantindo branch '${CMS_BRANCH}' isolado...`, status: "pending" },
+      { id: "commit", label: `Salvando em '${CMS_BRANCH}/data.json'...`, status: "pending" },
+      { id: "push", label: "Confirmando gravação...", status: "pending" },
+      { id: "vercel", label: "Vercel recebendo sinal de deploy...", status: "pending" },
+      { id: "done", label: "Conteúdo salvo — seguro de atualizações do Figma.", status: "pending" },
     ];
     setPublishSteps(STEPS); setPublishOpen(true);
-    setSaveStatus("saving"); setSaveError(""); addLog("info", "Publicação iniciada.");
+    setSaveStatus("saving"); setSaveError(""); addLog("info", `Publicação iniciada → branch '${CMS_BRANCH}' (isolado do código).`);
     const upd = (id: string, status: PublishStep["status"], error?: string) =>
       setPublishSteps(prev => prev.map(s => s.id === id ? { ...s, status, error } : s));
     upd("validate", "running"); await new Promise(r => setTimeout(r, 200)); upd("validate", "done");
-    upd("sha", "running"); await ghGetSHA(ghConfig, CMS_FILE).catch(() => undefined); upd("sha", "done");
+    upd("branch", "running");
+    const branchOk = await ghEnsureCMSBranch(ghConfig);
+    upd("branch", branchOk ? "done" : "error", branchOk ? undefined : "Falha ao criar/verificar branch cms-data.");
+    if (!branchOk) {
+      setSaveStatus("error"); setSaveError("Falha ao garantir branch cms-data.");
+      toast.error("Falha ao criar branch cms-data. Verifique permissões do token.");
+      addLog("error", "Branch cms-data não pôde ser criado/verificado.");
+      return false;
+    }
     upd("commit", "running");
     const payload = { ...data, updatedAt: new Date().toISOString() };
     const result = await ghCommitCMS(ghConfig, payload);
@@ -393,7 +464,7 @@ function useCMS() {
       addLog("error", `Commit falhou: ${result.error}`);
       return false;
     }
-    upd("commit", "done"); addLog("success", "Commit em cms/data.json (protegido de futuros deploys do Figma).");
+    upd("commit", "done"); addLog("success", `✓ Salvo em branch '${CMS_BRANCH}' — Figma Make NUNCA toca este branch.`);
     upd("push", "running"); await new Promise(r => setTimeout(r, 500)); upd("push", "done");
     upd("vercel", "running"); addLog("info", "Deploy iniciado na Vercel.");
     await new Promise(r => setTimeout(r, 1000)); upd("vercel", "done");
@@ -434,10 +505,10 @@ function useCMS() {
 
   const syncFromGitHub = useCallback(async (): Promise<boolean> => {
     if (!ghConfig?.owner || !ghConfig?.repo) { toast.warning("Configure o GitHub para sincronizar."); return false; }
-    addLog("info", "Sincronizando...");
+    addLog("info", `Sincronizando do branch '${CMS_BRANCH}'...`);
     const result = await ghFetchCMS(ghConfig);
-    if (result) { setCms(result.data); addLog("success", "Sincronizado."); toast.success("Dados sincronizados do GitHub."); return true; }
-    toast.error("Falha ao sincronizar."); return false;
+    if (result) { setCms(result.data); addLog("success", `✓ Dados sincronizados do branch '${CMS_BRANCH}'.`); toast.success("Dados sincronizados!"); return true; }
+    toast.error(`Branch '${CMS_BRANCH}' não encontrado. Publique algo primeiro.`); return false;
   }, [ghConfig, addLog]);
 
   return {
@@ -1104,8 +1175,8 @@ function AudioCarousel({ audios, showAdmin, onDelete }: {
   const CARD_W = 140;
 
   return (
-    /* overflow-hidden no wrapper externo evita que o carrossel alargue a página */
-    <div className="space-y-4 overflow-hidden">
+    /* max-w-full garante que o carrossel não expanda o pai sem quebrar o scroll */
+    <div className="space-y-4 w-full" style={{ maxWidth: "100%" }}>
       {audioEl}
 
       {/* Header */}
@@ -1131,8 +1202,8 @@ function AudioCarousel({ audios, showAdmin, onDelete }: {
         <div className={`absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity ${canRight ? "opacity-100" : "opacity-0"}`} />
         <div
           ref={scrollRef} onScroll={updateArrows} onWheel={onWheel}
-          className="flex gap-3 overflow-x-auto pb-2"
-          style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
+          className="flex gap-3 pb-2"
+          style={{ overflowX: "auto", width: "100%", maxWidth: "100%", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
         >
           {audios.map(a => (
             <div key={a.id} data-card className="flex-shrink-0" style={{ scrollSnapAlign: "start", width: CARD_W }}>
@@ -1152,6 +1223,99 @@ function AudioCarousel({ audios, showAdmin, onDelete }: {
           <p className="font-mono text-[9px] text-muted-foreground/50 mt-1">Upload via painel admin · MP3, WAV, AAC, M4A, OGG, FLAC</p>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   EDIT AUDIO MODAL — editar metadados sem deletar
+═══════════════════════════════════════════════════════════════════ */
+
+function EditAudioModal({ audio, open, onClose, onSave, uploadFile, ghConfigured }: {
+  audio: CMSAudio | null; open: boolean; onClose: () => void;
+  onSave: (updated: CMSAudio) => Promise<void>;
+  uploadFile: (f: File, t: "image" | "video" | "audio", onProgress: (p: UploadProgress) => void) => Promise<string | null>;
+  ghConfigured: boolean;
+}) {
+  const [title, setTitle] = useState("");
+  const [artist, setArtist] = useState("");
+  const [genre, setGenre] = useState("");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<UploadProgress | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (audio) { setTitle(audio.title); setArtist(audio.artist ?? ""); setGenre(audio.genre ?? ""); }
+    setCoverFile(null); setProgress(null); setBusy(false); setDone(false);
+  }, [audio, open]);
+
+  if (!open || !audio) return null;
+
+  const handleSave = async () => {
+    if (!title.trim() || busy) return;
+    setBusy(true);
+    let coverUrl = audio.coverUrl;
+    if (coverFile && ghConfigured) {
+      const u = await uploadFile(coverFile, "image", setProgress);
+      if (u) coverUrl = u;
+    }
+    await onSave({ ...audio, title: title.trim(), artist: artist.trim() || undefined, genre: genre.trim() || undefined, coverUrl });
+    setDone(true);
+    setTimeout(() => { setDone(false); onClose(); }, 600);
+    setBusy(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-background/92 backdrop-blur-sm" onClick={() => !busy && onClose()} />
+      <div className="relative z-10 w-full max-w-sm bg-card border border-border">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <div>
+            <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-0.5">Editar Áudio</div>
+            <h2 className="text-xl font-black uppercase text-foreground" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Metadados</h2>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 border border-border flex items-center justify-center text-muted-foreground"><X size={14} /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          {/* Current cover preview */}
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 border border-border flex-shrink-0 overflow-hidden">
+              {audio.coverUrl ? <img src={audio.coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-muted flex items-center justify-center"><Music size={20} className="text-muted-foreground" /></div>}
+            </div>
+            <div className="flex-1">
+              <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1.5">Trocar capa</label>
+              <div className={`border border-dashed p-2.5 text-center cursor-pointer transition-colors ${coverFile ? "border-primary" : "border-border hover:border-primary/40"}`} onClick={() => document.getElementById("edit-cover-inp")?.click()}>
+                <input id="edit-cover-inp" type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) setCoverFile(f); e.target.value = ""; }} />
+                <span className="font-mono text-[9px] text-muted-foreground tracking-wider uppercase">{coverFile ? coverFile.name.slice(0, 20) : "Selecionar imagem"}</span>
+              </div>
+              {progress && <div className="mt-1.5"><UploadProgressBar progress={progress} /></div>}
+            </div>
+          </div>
+          <div>
+            <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1.5">Título *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-muted border border-border px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1.5">Artista / feat.</label>
+            <input value={artist} onChange={e => setArtist(e.target.value)} placeholder="Frederico Pierre" className="w-full bg-muted border border-border px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1.5">Gênero</label>
+            <div className="flex flex-wrap gap-1.5">
+              {AUDIO_GENRES.map(g => (
+                <button key={g} type="button" onClick={() => setGenre(genre === g ? "" : g)} className={`font-mono text-[9px] tracking-wider uppercase px-2 py-1 border transition-colors ${genre === g ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground"}`}>{g}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="px-5 py-4 border-t border-border flex items-center justify-between">
+          <button onClick={onClose} className="font-mono text-xs text-muted-foreground tracking-widest uppercase">Cancelar</button>
+          <button onClick={handleSave} disabled={!title.trim() || busy} className={`flex items-center gap-2 px-5 py-2.5 font-bold text-xs tracking-widest uppercase transition-all ${done ? "bg-green-600 text-white" : "bg-primary text-background disabled:opacity-50"}`}>
+            {done ? <><Check size={12} />Salvo!</> : busy ? <><Loader2 size={12} className="animate-spin" />Salvando...</> : <><Check size={12} />Salvar</>}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1781,6 +1945,7 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState(""); const [editDesc, setEditDesc] = useState(""); const [editCat, setEditCat] = useState(CATEGORIES[0]);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [editingAudio, setEditingAudio] = useState<CMSAudio | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -1812,10 +1977,19 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
   };
 
   const delAudio = async (id: string) => {
-    if (!confirm("Remover áudio?")) return;
+    if (!confirm("Remover áudio permanentemente?")) return;
     const a = cms.audios.find(a => a.id === id);
     if (a) { if (a.url.startsWith("/uploads/")) await deleteFile(a.url); if (a.coverUrl?.startsWith("/uploads/")) await deleteFile(a.coverUrl); }
     setCms({ ...cms, audios: cms.audios.filter(a => a.id !== id) });
+  };
+
+  const toggleHideAudio = (id: string) => {
+    setCms({ ...cms, audios: cms.audios.map(a => a.id === id ? { ...a, hidden: !a.hidden } : a) });
+  };
+
+  const saveAudio = async (updated: CMSAudio) => {
+    setCms({ ...cms, audios: cms.audios.map(a => a.id === updated.id ? updated : a) });
+    setEditingAudio(null);
   };
 
   const saveEdit = async (id: string) => {
@@ -1963,18 +2137,31 @@ function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFil
                 {cms.audios.length === 0
                   ? <p className="font-mono text-[10px] text-muted-foreground tracking-widest">Nenhuma — upload via botão acima (aba Áudio)</p>
                   : cms.audios.map(a => (
-                    <div key={a.id} className="border border-border flex items-center gap-2 p-2 mb-1">
-                      <div className="w-10 h-10 flex-shrink-0 overflow-hidden border border-border">
-                        {a.coverUrl ? <img src={a.coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-muted flex items-center justify-center"><Music size={12} className="text-muted-foreground" /></div>}
+                    <div key={a.id} className={`border mb-1 ${a.hidden ? "border-border/40 opacity-50" : "border-border"}`}>
+                      <div className="flex items-center gap-2 p-2">
+                        <div className="w-10 h-10 flex-shrink-0 overflow-hidden border border-border">
+                          {a.coverUrl ? <img src={a.coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-muted flex items-center justify-center"><Music size={12} className="text-muted-foreground" /></div>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{a.title}</p>
+                          <div className="flex items-center gap-2">
+                            {a.artist && <p className="font-mono text-[9px] text-muted-foreground">{a.artist}</p>}
+                            {a.genre && <span className="font-mono text-[8px] px-1 bg-primary/10 text-primary">{a.genre}</span>}
+                            {a.hidden && <span className="font-mono text-[8px] px-1 bg-red-500/20 text-red-400 uppercase">Oculto</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button onClick={() => setEditingAudio(a)} title="Editar" className="font-mono text-[9px] px-2 py-1 border border-border text-muted-foreground hover:border-primary hover:text-primary">✏</button>
+                          <button onClick={() => toggleHideAudio(a.id)} title={a.hidden ? "Mostrar" : "Ocultar"} className={`font-mono text-[9px] px-2 py-1 border ${a.hidden ? "border-green-500/40 text-green-400" : "border-yellow-500/40 text-yellow-400"}`}>{a.hidden ? <Eye size={8} /> : <EyeOff size={8} />}</button>
+                          <button onClick={() => delAudio(a.id)} title="Deletar permanentemente" className="font-mono text-[9px] px-2 py-1 border border-red-500/40 text-red-400"><Trash2 size={8} /></button>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{a.title}</p>
-                        {a.artist && <p className="font-mono text-[9px] text-muted-foreground">{a.artist}</p>}
-                      </div>
-                      <button onClick={() => delAudio(a.id)} className="font-mono text-[9px] px-2 py-1 border border-red-500/40 text-red-400"><Trash2 size={8} /></button>
                     </div>
                   ))}
               </div>
+
+              {/* EditAudioModal */}
+              <EditAudioModal audio={editingAudio} open={!!editingAudio} onClose={() => setEditingAudio(null)} onSave={saveAudio} uploadFile={uploadFile} ghConfigured={!!ghConfig?.token} />
             </div>
           )}
 
@@ -2140,9 +2327,19 @@ function PortfolioApp() {
 
       <PublishProgressModal open={publishOpen} steps={publishSteps} onClose={() => setPublishOpen(false)} />
       <AdminLoginModal open={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setAdminMode(true); toast.success("Admin autenticado."); addLog("success", "Admin autenticado."); }} />
-      <GalleryModal service={galleryService} allProjects={allProjects} audios={cms.audios} initialItem={galleryInitialItem} onClose={() => { setGalleryService(null); setGalleryInitialItem(null); }} showAdmin={adminMode} onDelete={handleDeleteProject} onDeleteAudio={handleDeleteAudio} onTogglePin={handleTogglePin} pinned={pinned} />
+      <GalleryModal service={galleryService} allProjects={allProjects} audios={adminMode ? cms.audios : cms.audios.filter(a => !a.hidden)} initialItem={galleryInitialItem} onClose={() => { setGalleryService(null); setGalleryInitialItem(null); }} showAdmin={adminMode} onDelete={handleDeleteProject} onDeleteAudio={handleDeleteAudio} onTogglePin={handleTogglePin} pinned={pinned} />
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSave={handleAddProject} onSaveAudio={handleAddAudio} uploadFile={uploadFile} ghConfigured={ghOk} />
       <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} />
+
+      {/* Floating "Disponível" badge — fixed bottom-right, visible everywhere */}
+      <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-background border border-primary/60 px-4 py-2 shadow-lg hover:border-primary transition-colors group"
+        style={{ backdropFilter: "blur(8px)" }}
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse flex-shrink-0" />
+        <span className="font-mono text-[10px] text-primary tracking-[0.2em] uppercase group-hover:text-primary/80">{content.heroBadge}</span>
+        <ArrowUpRight size={10} className="text-primary/70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+      </a>
 
       {/* Progress bar */}
       <div className="fixed top-0 left-0 h-[2px] bg-primary z-[100]" style={{ width: `${progress * 100}%`, transition: "width 60ms linear" }} />
@@ -2340,11 +2537,9 @@ function PortfolioApp() {
       <section id="diferenciais" className="py-16 md:py-28 overflow-hidden">
         <div className="max-w-6xl mx-auto px-5 md:px-6 overflow-hidden">
           <FadeIn><SectionLabel>Por que eu?</SectionLabel></FadeIn>
-          {/* overflow-hidden em cada coluna isola qualquer scroll interno */}
-          <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-start w-full">
+              <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-start w-full" style={{ maxWidth: "100%" }}>
             <FadeIn delay={60}>
-              {/* min-w-0 + overflow-hidden garantem que o AudioCarousel não expanda o pai */}
-              <div className="min-w-0 overflow-hidden w-full">
+              <div className="min-w-0 w-full" style={{ maxWidth: "100%" }}>
                 <h2
                   className="font-black uppercase text-foreground leading-tight mb-5"
                   style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "clamp(1.8rem, 7.5vw, 4rem)", wordBreak: "break-word", overflowWrap: "break-word" }}
@@ -2352,14 +2547,13 @@ function PortfolioApp() {
                   {content.difHeading1}<br />{content.difHeading2}<br /><span className="text-primary">{content.difHeading3}</span>
                 </h2>
                 <p className="text-muted-foreground font-light text-sm md:text-base leading-relaxed mb-6 md:mb-8" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>{content.difSubtext}</p>
-                {/* Wrapper com overflow-hidden para o carrossel — nunca expande além da coluna */}
-                <div className="w-full overflow-hidden">
-                  <AudioCarousel audios={cms.audios} showAdmin={adminMode} onDelete={handleDeleteAudio} />
+                {/* Wrapper com max-width — o carrossel usa overflow-x: auto internamente */}
+                <div style={{ maxWidth: "100%", width: "100%" }}>
+                  <AudioCarousel audios={adminMode ? cms.audios : cms.audios.filter(a => !a.hidden)} showAdmin={adminMode} onDelete={handleDeleteAudio} />
                 </div>
               </div>
             </FadeIn>
-            {/* Coluna das vantagens — confinada com overflow-hidden */}
-            <div className="space-y-0 min-w-0 overflow-hidden w-full">
+            <div className="space-y-0 min-w-0 w-full">
               {advantages.map((adv, i) => (
                 <FadeIn key={adv.num} delay={80 + i * 60}>
                   <div className="border-b border-border py-5 md:py-7">
