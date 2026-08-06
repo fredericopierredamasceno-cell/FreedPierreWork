@@ -98,17 +98,7 @@
     }
   ],
   "projects": [],
-  "audios": [
-    {
-      "id": "audio-1785984523796",
-      "title": "Me and my crew - Mix",
-      "artist": "Desconhecido",
-      "genre": "Mix",
-      "url": "/uploads/audio/1785984515386-Me_And_My_Crew_Mix_Estudo.mp3",
-      "coverUrl": "/uploads/images/1785985671019-00020-75290831.png",
-      "createdAt": 1785984523796
-    }
-  ],
+  "audios": [],
   "pinned": [],
   "hiddenSeeds": [],
   "updatedAt": "2026-08-06T02:48:44.349Z"
