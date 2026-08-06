@@ -100,15 +100,6 @@
   "projects": [],
   "audios": [
     {
-      "id": "audio-1785979675831",
-      "title": "Me and my Crew",
-      "artist": "Desconhecido",
-      "genre": "R&B",
-      "url": "/uploads/audio/1785979668763-Me_And_My_Crew_Mix_Estudo.mp3",
-      "coverUrl": "/uploads/images/1785984246020-00020-75290831.png",
-      "createdAt": 1785979675831
-    },
-    {
       "id": "audio-1785979411863",
       "title": "Nice Bass",
       "artist": "Freed Pierre",
