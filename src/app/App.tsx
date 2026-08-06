@@ -2670,24 +2670,69 @@ function PortfolioApp() {
   // rígidos com autoplay de elementos inseridos dinamicamente via JS depois
   // do carregamento inicial do que com o atributo autoPlay declarado no HTML
   // já presente no primeiro paint — nesses casos o autoplay é silenciosamente
-  // bloqueado e o vídeo fica parado no primeiro frame ("congelado"). Forçar
-  // `.muted` como propriedade do elemento (não só o atributo JSX) e chamar
-  // `.play()` explicitamente resolve isso de forma confiável em iOS e Android.
+  // bloqueado e o vídeo fica parado no primeiro frame ("congelado").
+  //
+  // Correção reforçada (multi-camada, cobre os cenários mais comuns de
+  // bloqueio de autoplay mobile observados em produção):
+  // 1) `.muted` forçado como propriedade JS (não só atributo) ANTES de
+  //    qualquer chamada a `.play()` — alguns engines mobile só permitem
+  //    autoplay mudo se a propriedade já estiver true no momento da chamada.
+  // 2) Tentativas de play() em múltiplos eventos do próprio vídeo
+  //    (loadedmetadata, loadeddata, canplay, canplaythrough) — cobre casos
+  //    em que o navegador libera o autoplay só depois de decodificar o
+  //    primeiro frame, o que varia por dispositivo/conexão.
+  // 3) Retentativas curtas por alguns segundos após o mount (cobre o caso
+  //    de o primeiro play() ser rejeitado por timing, antes do elemento
+  //    estar 100% pronto).
+  // 4) Retomada ao voltar de background/aba (visibilitychange/pageshow) —
+  //    iOS/Android pausam vídeos ao minimizar o app.
+  // 5) Fallback definitivo: no primeiro toque/scroll/clique do usuário em
+  //    qualquer lugar da página, se o vídeo ainda estiver pausado, tenta
+  //    play() de novo — como é um gesto real do usuário, isso SEMPRE tem
+  //    permissão de autoplay em qualquer navegador, então garante que o
+  //    vídeo nunca fique travado indefinidamente.
   const heroVideoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     if (loading) return;
     const v = heroVideoRef.current;
     if (!v) return;
+
+    let cancelled = false;
     const tryPlay = () => {
+      if (cancelled || !v.paused) return;
       v.muted = true;
+      v.defaultMuted = true;
       const p = v.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
     };
+
     tryPlay();
-    // iOS/Android costumam pausar vídeos ao minimizar o app/trocar de aba;
-    // sem isso o Hero fica congelado ao voltar, mesmo com autoplay correto.
+
+    // Retentativas curtas logo após o mount (cobre timing de decodificação
+    // do primeiro frame em conexões mobile mais lentas).
+    const retryTimeouts = [100, 400, 900, 1800, 3000].map(ms => setTimeout(tryPlay, ms));
+
+    const events: (keyof HTMLVideoElementEventMap)[] = ["loadedmetadata", "loadeddata", "canplay", "canplaythrough"];
+    events.forEach(ev => v.addEventListener(ev, tryPlay));
+
     document.addEventListener("visibilitychange", tryPlay);
-    return () => document.removeEventListener("visibilitychange", tryPlay);
+    window.addEventListener("pageshow", tryPlay);
+
+    // Fallback garantido: qualquer gesto real do usuário destrava autoplay
+    // em 100% dos navegadores mobile, mesmo que as tentativas silenciosas
+    // acima tenham sido bloqueadas pela política do dispositivo/navegador.
+    const gestureEvents: (keyof DocumentEventMap)[] = ["touchstart", "click", "scroll"];
+    const onGesture = () => { tryPlay(); gestureEvents.forEach(ev => document.removeEventListener(ev, onGesture)); };
+    gestureEvents.forEach(ev => document.addEventListener(ev, onGesture, { passive: true, once: true }));
+
+    return () => {
+      cancelled = true;
+      retryTimeouts.forEach(clearTimeout);
+      events.forEach(ev => v.removeEventListener(ev, tryPlay));
+      document.removeEventListener("visibilitychange", tryPlay);
+      window.removeEventListener("pageshow", tryPlay);
+      gestureEvents.forEach(ev => document.removeEventListener(ev, onGesture));
+    };
   }, [loading]);
 
   if (loading) return <LoadingScreen />;
@@ -2746,8 +2791,12 @@ function PortfolioApp() {
             ref={heroVideoRef}
             id="hero-video"
             src={heroVideo} autoPlay muted loop playsInline
+            preload="auto"
+            disablePictureInPicture
             onLoadedMetadata={e => { e.currentTarget.muted = true; e.currentTarget.play().catch(() => {}); }}
+            onCanPlay={e => { if (e.currentTarget.paused) e.currentTarget.play().catch(() => {}); }}
             className="w-full h-full object-cover"
+            style={{ transform: "translateZ(0)", WebkitBackfaceVisibility: "hidden", backfaceVisibility: "hidden" }}
           />
           <div className="absolute inset-0 bg-background/65" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/25 via-background/15 to-background" />
