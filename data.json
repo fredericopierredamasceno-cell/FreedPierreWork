@@ -98,8 +98,18 @@
     }
   ],
   "projects": [],
-  "audios": [],
+  "audios": [
+    {
+      "id": "audio-1785987301656",
+      "title": "Gta Style - Beat",
+      "artist": "Freed Pierre",
+      "genre": "Beat",
+      "url": "/uploads/audio/1785987295678-Gta_Style.mp3",
+      "coverUrl": "/uploads/images/1785987299378-00020-75290831.png",
+      "createdAt": 1785987301656
+    }
+  ],
   "pinned": [],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-06T02:48:44.349Z"
+  "updatedAt": "2026-08-06T03:35:02.155Z"
 }
