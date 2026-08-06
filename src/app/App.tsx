@@ -40,9 +40,10 @@ const CMS_BRANCH = "cms-data";
 const CMS_FILE   = "data.json";
 const BKP_FILE   = "bkp.json";
 
-const GH_CFG_KEY   = "fp_gh_cfg";
-const GH_TOKEN_KEY = "fp_gh_tok";
-const MAX_FILE_BYTES = 25 * 1024 * 1024;
+const GH_CFG_KEY      = "fp_gh_cfg";
+const GH_TOKEN_KEY    = "fp_gh_tok";
+const MAX_FILE_BYTES  = 25 * 1024 * 1024;
+const PUBLIC_CFG_PATH = "public/cms-config.json";
 
 interface GitHubConfig { owner: string; repo: string; branch: string; token: string; }
 
@@ -63,6 +64,17 @@ function storeGHConfig(cfg: GitHubConfig) {
 function clearGHConfig() {
   localStorage.removeItem(GH_CFG_KEY);
   sessionStorage.removeItem(GH_TOKEN_KEY);
+}
+
+// Dispositivos sem localStorage descobrem o repo via /cms-config.json (gravado a cada publish)
+async function loadPublicConfig(): Promise<{ owner: string; repo: string; branch: string } | null> {
+  try {
+    const r = await fetch(`/cms-config.json?t=${Date.now()}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.owner && d.repo) return { owner: d.owner, repo: d.repo, branch: d.branch || "main" };
+  } catch {}
+  return null;
 }
 
 const GH_API = (cfg: GitHubConfig, path: string) =>
@@ -425,32 +437,46 @@ function useCMS() {
 
   useEffect(() => {
     addLog("info", "Carregando portfólio...");
-    const cfg = loadGHConfig();
-    if (cfg?.owner && cfg?.repo) {
-      addLog("info", `Sincronizando GitHub (${cfg.owner}/${cfg.repo}) — lendo branch '${CMS_BRANCH}' (isolado do Figma Make).`);
-      ghFetchCMS(cfg).then(result => {
-        if (result) {
-          setCms(result.data);
-          setLoading(false);
-          if (result.fromBackup) {
-            addLog("warn", "⚠ bkp.json restaurou os dados — regravando data.json.");
-            toast.info("Dados admin restaurados do backup automaticamente.", { duration: 4000 });
-            ghWriteCMSFile(cfg as GitHubConfig, CMS_FILE, result.data, "RESTORE: bkp->data [auto]").catch(() => {});
-          } else {
-            addLog("success", "✓ CMS carregado do branch cms-data.");
-          }
-        } else {
-          addLog("warn", "Branch cms-data nao existe — usando defaults."); fetchLocal();
+
+    async function runFetch() {
+      let cfg = loadGHConfig();
+      if (!cfg?.owner) {
+        // Dispositivo sem config local (ex: mobile) — tenta descobrir repo via /cms-config.json
+        const pub = await loadPublicConfig();
+        if (pub) {
+          cfg = { ...pub, token: "" };
+          addLog("info", "Config pública detectada — lendo cms-data sem token.");
         }
-      }).catch(() => fetchLocal());
-    } else { fetchLocal(); }
+      }
+      if (cfg?.owner && cfg?.repo) {
+        addLog("info", `Sincronizando GitHub (${cfg.owner}/${cfg.repo}) — branch '${CMS_BRANCH}'.`);
+        try {
+          const result = await ghFetchCMS(cfg);
+          if (result) {
+            setCms(result.data);
+            setLoading(false);
+            if (result.fromBackup) {
+              addLog("warn", "⚠ bkp.json restaurou os dados — regravando data.json.");
+              toast.info("Dados admin restaurados do backup automaticamente.", { duration: 4000 });
+              if (cfg.token) ghWriteCMSFile(cfg as GitHubConfig, CMS_FILE, result.data, "RESTORE: bkp->data [auto]").catch(() => {});
+            } else {
+              addLog("success", "✓ CMS carregado do branch cms-data.");
+            }
+          } else {
+            addLog("warn", "Branch cms-data vazio — usando defaults."); fetchLocal();
+          }
+        } catch { fetchLocal(); }
+      } else { fetchLocal(); }
+    }
 
     function fetchLocal() {
       fetch(`/cms-data.json?t=${Date.now()}`)
         .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-        .then(d => { setCms(makeCMSData(d)); setLoading(false); addLog("success", "Fallback local carregado (somente defaults)."); })
+        .then(d => { setCms(makeCMSData(d)); setLoading(false); addLog("success", "Fallback local carregado."); })
         .catch(() => { setLoading(false); addLog("warn", "Usando padrões iniciais."); });
     }
+
+    runFetch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -463,6 +489,7 @@ function useCMS() {
       { id: "validate", label: "Validando dados...", status: "pending" },
       { id: "branch", label: `Garantindo branch '${CMS_BRANCH}' isolado...`, status: "pending" },
       { id: "commit", label: `Salvando em '${CMS_BRANCH}/data.json'...`, status: "pending" },
+      { id: "pubcfg", label: "Gravando cms-config.json (sincronização multi-dispositivo)...", status: "pending" },
       { id: "push", label: "Confirmando gravação...", status: "pending" },
       { id: "vercel", label: "Vercel recebendo sinal de deploy...", status: "pending" },
       { id: "done", label: "Conteúdo salvo — seguro de atualizações do Figma.", status: "pending" },
@@ -492,6 +519,17 @@ function useCMS() {
       return false;
     }
     upd("commit", "done"); addLog("success", `✓ Salvo em branch '${CMS_BRANCH}' — Figma Make NUNCA toca este branch.`);
+    upd("pubcfg", "running");
+    try {
+      const cfgContent = btoa(unescape(encodeURIComponent(JSON.stringify({ owner: ghConfig.owner, repo: ghConfig.repo, branch: CMS_BRANCH }, null, 2))));
+      const cfgShaResp = await fetch(`https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/${PUBLIC_CFG_PATH}?ref=${ghConfig.branch}`, { headers: GH_HEADERS(ghConfig.token) });
+      const cfgShaData = cfgShaResp.ok ? await cfgShaResp.json() : {};
+      const cfgBody: Record<string, unknown> = { message: "sync: cms-config.json [multi-device]", content: cfgContent, branch: ghConfig.branch };
+      if (cfgShaData.sha) cfgBody.sha = cfgShaData.sha;
+      const cfgR = await fetch(`https://api.github.com/repos/${ghConfig.owner}/${ghConfig.repo}/contents/${PUBLIC_CFG_PATH}`, { method: "PUT", headers: GH_HEADERS(ghConfig.token), body: JSON.stringify(cfgBody) });
+      if (cfgR.ok) { upd("pubcfg", "done"); addLog("success", "✓ cms-config.json gravado — mobile e outros dispositivos sincronizarão automaticamente."); }
+      else { upd("pubcfg", "error", "Falha ao gravar cms-config.json (não crítico)."); addLog("warn", "cms-config.json não gravado — sync multi-device pode falhar."); }
+    } catch { upd("pubcfg", "error", "Erro de rede ao gravar cms-config.json."); }
     upd("push", "running"); await new Promise(r => setTimeout(r, 500)); upd("push", "done");
     upd("vercel", "running"); addLog("info", "Deploy iniciado na Vercel.");
     await new Promise(r => setTimeout(r, 1000)); upd("vercel", "done");
