@@ -106,7 +106,8 @@
       "genre": "Instrumental",
       "url": "/uploads/audio/1786027004289-Nice_Bass.mp3",
       "coverUrl": "/uploads/images/1786027009741-f17bd481-6071-488e-bfc8-481f06631dcf.jpeg",
-      "createdAt": 1786027013066
+      "createdAt": 1786027013066,
+      "hidden": true
     },
     {
       "id": "audio-1786026877866",
