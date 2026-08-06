@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Component } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, Component } from "react";
 import type { ErrorInfo, ReactNode } from "react";
 import {
   Mail, Menu, X, ChevronDown, Mic, Film, Palette,
@@ -58,12 +58,18 @@ function loadGHConfig(): GitHubConfig | null {
   } catch { return null; }
 }
 function storeGHConfig(cfg: GitHubConfig) {
-  localStorage.setItem(GH_CFG_KEY, JSON.stringify({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch }));
-  if (cfg.token) sessionStorage.setItem(GH_TOKEN_KEY, cfg.token);
+  try {
+    localStorage.setItem(GH_CFG_KEY, JSON.stringify({ owner: cfg.owner, repo: cfg.repo, branch: cfg.branch }));
+    if (cfg.token) sessionStorage.setItem(GH_TOKEN_KEY, cfg.token);
+  } catch {}
 }
 function clearGHConfig() {
-  localStorage.removeItem(GH_CFG_KEY);
-  sessionStorage.removeItem(GH_TOKEN_KEY);
+  try { localStorage.removeItem(GH_CFG_KEY); sessionStorage.removeItem(GH_TOKEN_KEY); } catch {}
+}
+// Remove apenas o token (credencial sensível) mantendo owner/repo/branch —
+// usado no logout para que o token nunca sobreviva ao fim da sessão admin.
+function clearGHTokenOnly() {
+  try { sessionStorage.removeItem(GH_TOKEN_KEY); } catch {}
 }
 
 // Dispositivos sem localStorage descobrem o repo via /cms-config.json (gravado a cada publish)
@@ -583,9 +589,10 @@ function useCMS() {
       await ghEnsureCMSBranch(ghConfig);
       const result = await ghCommitCMS(ghConfig, data);
       if (result.ok) {
-        setSaveStatus("saved");
+        setSaveStatus("success");
         addLog("success", "Auto-save: conteudo persistido em cms-data.");
         toast.success("Salvo automaticamente", { duration: 1500 });
+        setTimeout(() => setSaveStatus("idle"), 4000);
       } else {
         addLog("warn", `Auto-save falhou: ${result.error}`);
       }
@@ -594,6 +601,7 @@ function useCMS() {
 
   return {
     ghConfig, setGhConfig, clearGhConfig: useCallback(() => { clearGHConfig(); setGhConfigState(null); }, []),
+    clearToken: useCallback(() => { clearGHTokenOnly(); setGhConfigState(prev => prev ? { ...prev, token: "" } : prev); }, []),
     cms, setCms, loading, saveStatus, saveError,
     logs, addLog, publishSteps, publishOpen, setPublishOpen,
     publish: doPublish, uploadFile, deleteFile, syncFromGitHub, silentSave,
@@ -627,12 +635,47 @@ const PHASE_LABELS: Record<UploadProgress["phase"], string> = {
 
 /* ═══════════════════════════════════════════════════════════════════
    AUTH
+   ─────────────────────────────────────────────────────────────────
+   Sessão admin com expiração deslizante (TTL) em vez de flag eterna:
+   reduz o risco de uma aba esquecida aberta manter acesso admin
+   indefinidamente. Tudo client-side, sem configuração externa.
 ═══════════════════════════════════════════════════════════════════ */
 
 const ADMIN_USER = "freed";
 const ADMIN_PASS = "pierre2026";
 const SESSION_KEY = "fp_admin_session";
-function checkSession() { return sessionStorage.getItem(SESSION_KEY) === "1"; }
+const SESSION_TTL_MS = 4 * 60 * 60 * 1000; // 4h de sessão administrativa (renovada com o uso)
+
+function checkSession(): boolean {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return false;
+    const exp = Number(raw);
+    if (!Number.isFinite(exp) || Date.now() > exp) { sessionStorage.removeItem(SESSION_KEY); return false; }
+    return true;
+  } catch { return false; }
+}
+function startSession() { try { sessionStorage.setItem(SESSION_KEY, String(Date.now() + SESSION_TTL_MS)); } catch {} }
+function renewSession() { try { if (checkSession()) sessionStorage.setItem(SESSION_KEY, String(Date.now() + SESSION_TTL_MS)); } catch {} }
+function endSession() { try { sessionStorage.removeItem(SESSION_KEY); } catch {} }
+
+// Throttle de tentativas de login (brute-force básico) — inteiramente local, sem servidor.
+const LOGIN_FAIL_KEY = "fp_admin_login_fails";
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCK_MS = 60 * 1000;
+
+function getLoginFailState(): { count: number; lockUntil: number } {
+  try {
+    const raw = sessionStorage.getItem(LOGIN_FAIL_KEY);
+    if (!raw) return { count: 0, lockUntil: 0 };
+    const parsed = JSON.parse(raw);
+    return { count: Number(parsed.count) || 0, lockUntil: Number(parsed.lockUntil) || 0 };
+  } catch { return { count: 0, lockUntil: 0 }; }
+}
+function setLoginFailState(s: { count: number; lockUntil: number }) {
+  try { sessionStorage.setItem(LOGIN_FAIL_KEY, JSON.stringify(s)); } catch {}
+}
+function clearLoginFailState() { try { sessionStorage.removeItem(LOGIN_FAIL_KEY); } catch {} }
 
 /* ═══════════════════════════════════════════════════════════════════
    SEEDS
@@ -857,8 +900,26 @@ function AdminLoginModal({ open, onClose, onSuccess }: { open: boolean; onClose:
   const [user, setUser] = useState(""); const [pass, setPass] = useState(""); const [showPass, setShowPass] = useState(false); const [err, setErr] = useState("");
   useEffect(() => { if (!open) { setUser(""); setPass(""); setErr(""); } }, [open]);
   const submit = () => {
-    if (user === ADMIN_USER && pass === ADMIN_PASS) { sessionStorage.setItem(SESSION_KEY, "1"); onSuccess(); onClose(); }
-    else setErr("Usuário ou senha incorretos.");
+    const failState = getLoginFailState();
+    if (failState.lockUntil > Date.now()) {
+      const secs = Math.ceil((failState.lockUntil - Date.now()) / 1000);
+      setErr(`Muitas tentativas incorretas. Aguarde ${secs}s.`);
+      return;
+    }
+    if (user === ADMIN_USER && pass === ADMIN_PASS) {
+      clearLoginFailState();
+      startSession();
+      onSuccess(); onClose();
+    } else {
+      const nextCount = failState.count + 1;
+      if (nextCount >= MAX_LOGIN_ATTEMPTS) {
+        setLoginFailState({ count: 0, lockUntil: Date.now() + LOGIN_LOCK_MS });
+        setErr(`Muitas tentativas incorretas. Aguarde ${Math.round(LOGIN_LOCK_MS / 1000)}s.`);
+      } else {
+        setLoginFailState({ count: nextCount, lockUntil: 0 });
+        setErr("Usuário ou senha incorretos.");
+      }
+    }
   };
   if (!open) return null;
   return (
@@ -968,7 +1029,6 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
       className="relative bg-card group overflow-hidden aspect-video cursor-pointer select-none"
       onMouseEnter={startPlay} onMouseLeave={stopPlay}
       {...tap}
-      style={{ touchAction: "pan-y" }}
     >
       {item.mediaType === "video" && (
         <video ref={videoRef} src={item.mediaUrl} muted playsInline loop preload="metadata" className="absolute inset-0 w-full h-full object-cover" style={{ pointerEvents: "none" }} />
@@ -992,7 +1052,7 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
       <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent pointer-events-none" />
       <div className="absolute bottom-0 left-0 right-0 p-3 md:p-5 pointer-events-none">
         <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-0.5">{item.category}</div>
-        <h3 className="text-base md:text-xl font-black uppercase text-foreground leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{item.title}</h3>
+        <h3 className="text-base md:text-xl font-black uppercase text-foreground leading-tight line-clamp-2 break-words" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{item.title}</h3>
       </div>
       {(item.mediaType === "video" || isEmbed) && !playing && (
         <div className={`absolute top-2 right-2 w-7 h-7 flex items-center justify-center ${isEmbed ? "bg-red-600/90" : "bg-primary/90"}`}>
@@ -1027,16 +1087,29 @@ function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, onClick
    CAROUSEL ROW (Netflix style) — com wheel e swipe
 ═══════════════════════════════════════════════════════════════════ */
 
-function useCarouselScroll() {
+function useCarouselScroll(itemsSignature?: number) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
-  const [canRight, setCanRight] = useState(true);
+  const [canRight, setCanRight] = useState(false);
 
   const updateArrows = useCallback(() => {
     const el = scrollRef.current; if (!el) return;
     setCanLeft(el.scrollLeft > 8);
     setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
   }, []);
+
+  // Recalcula as setas ao montar, quando a lista de itens muda e quando a viewport é redimensionada
+  // (corrige estado inicial incorreto das setas e desalinhos entre breakpoints)
+  useLayoutEffect(() => {
+    updateArrows();
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => updateArrows());
+    ro.observe(el);
+    window.addEventListener("resize", updateArrows);
+    return () => { ro.disconnect(); window.removeEventListener("resize", updateArrows); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateArrows, itemsSignature]);
 
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current; if (!el) return;
@@ -1046,7 +1119,12 @@ function useCarouselScroll() {
 
   const onWheel = (e: React.WheelEvent) => {
     const el = scrollRef.current; if (!el) return;
-    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // touchpad já lida com isso
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // touchpad já lida com isso nativamente
+    const atStart = el.scrollLeft <= 0;
+    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 1;
+    // Se o carrossel já está no início/fim na direção do scroll, deixa o scroll vertical
+    // da página continuar normalmente — evita "travar" a página ao passar o mouse por cima.
+    if ((e.deltaY < 0 && atStart) || (e.deltaY > 0 && atEnd)) return;
     e.preventDefault();
     el.scrollBy({ left: e.deltaY, behavior: "auto" });
   };
@@ -1058,7 +1136,7 @@ function CarouselRow({ label, items, showAdmin, pinned, onTogglePin, onDelete, o
   label: string; items: DisplayProject[]; showAdmin: boolean; pinned: Set<string>;
   onTogglePin: (id: string) => void; onDelete: (id: string) => void; onClickItem: (item: DisplayProject) => void;
 }) {
-  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll();
+  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll(items.length);
   const accent = CATEGORY_COLORS[label] ?? "var(--primary)";
   if (items.length === 0) return null;
 
@@ -1117,7 +1195,6 @@ function AudioCard({ audio, isActive, isPlaying, onToggle, onDelete, showAdmin, 
       <div
         className={`relative overflow-hidden cursor-pointer border transition-colors ${imgSize} ${isActive ? "border-primary/60" : "border-border hover:border-primary/40"}`}
         {...tap}
-        style={{ touchAction: "pan-y" }}
       >
         {audio.coverUrl
           ? <img src={audio.coverUrl} alt={audio.title} className="w-full h-full object-cover" loading="lazy" />
@@ -1246,7 +1323,7 @@ function MiniPlayer({ player }: { player: ReturnType<typeof useAudioPlayer> }) {
 function AudioCarousel({ audios, showAdmin, onDelete }: {
   audios: CMSAudio[]; showAdmin: boolean; onDelete: (id: string) => void;
 }) {
-  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll();
+  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll(audios.length);
   const player = useAudioPlayer(audios);
   const { activeId, isPlaying, toggle, audioEl } = player;
 
@@ -2334,7 +2411,7 @@ function PortfolioApp() {
   const [showLogin, setShowLogin] = useState(false);
   const progress = useScrollProgress();
 
-  const { ghConfig, setGhConfig, clearGhConfig, cms, setCms, loading, saveStatus, saveError, logs, addLog, publishSteps, publishOpen, setPublishOpen, publish, uploadFile, deleteFile, syncFromGitHub, silentSave } = useCMS();
+  const { ghConfig, setGhConfig, clearGhConfig, clearToken, cms, setCms, loading, saveStatus, saveError, logs, addLog, publishSteps, publishOpen, setPublishOpen, publish, uploadFile, deleteFile, syncFromGitHub, silentSave } = useCMS();
 
   const content = cms.content;
   const pinned = new Set(cms.pinned);
@@ -2384,8 +2461,31 @@ function PortfolioApp() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sessão admin expira sozinha (TTL deslizante) — verifica periodicamente e renova com o uso,
+  // evitando que uma aba esquecida aberta mantenha acesso admin indefinidamente.
+  useEffect(() => {
+    if (!adminMode) return;
+    const iv = setInterval(() => {
+      if (!checkSession()) {
+        setAdminMode(false); setAdminOpen(false);
+        toast.info("Sessão expirada. Faça login novamente.");
+        addLog("info", "Sessão admin expirada por inatividade.");
+      } else {
+        renewSession();
+      }
+    }, 60 * 1000);
+    return () => clearInterval(iv);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminMode]);
+
   const scrollTo = (href: string) => { setMenuOpen(false); document.querySelector(href)?.scrollIntoView({ behavior: "smooth" }); };
-  const logout = () => { sessionStorage.removeItem(SESSION_KEY); setAdminMode(false); setAdminOpen(false); toast.info("Admin deslogado."); addLog("info", "Admin deslogado."); };
+  const logout = () => {
+    endSession();
+    clearToken(); // credencial do GitHub não deve sobreviver ao fim da sessão admin
+    setAdminMode(false); setAdminOpen(false);
+    toast.info("Admin deslogado.");
+    addLog("info", "Admin deslogado.");
+  };
 
   const openProjectGallery = (item: DisplayProject) => {
     const svc = services.find(s => s.galleryCategories.includes(item.category));
@@ -2636,7 +2736,7 @@ function PortfolioApp() {
         <div className="max-w-6xl mx-auto px-5 md:px-6 overflow-hidden">
           <FadeIn><SectionLabel>Por que eu?</SectionLabel></FadeIn>
               <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-start w-full" style={{ maxWidth: "100%" }}>
-            <FadeIn delay={60}>
+            <FadeIn delay={60} className="min-w-0 w-full">
               <div className="min-w-0 w-full" style={{ maxWidth: "100%" }}>
                 <h2
                   className="font-black uppercase text-foreground leading-tight mb-5"
