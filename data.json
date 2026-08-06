@@ -99,6 +99,18 @@
   ],
   "projects": [
     {
+      "id": "proj-1786029333026",
+      "title": "Game - Tchô Tchô MC Feat. Freed Pierre",
+      "description": "Inspirado no universo dos games e do pôquer, este lyric video em motion foi desenvolvido para dar vida à música **\"Game\"**, de Tchô Tchô MC e Freed Pierre, gravada no estúdio Pills Rec. O projeto mistura referências aos jogos eletrônicos, cartas e apostas com animações tipográficas e elementos visuais que acompanham a narrativa da canção, reforçando cada rima e criando uma identidade marcante do início ao fim.\n\nAlém da animação das letras, o videoclipe apresenta uma narrativa visual que conecta todos esses universos e culmina em um desfecho totalmente animado. Cada cena foi planejada para tornar a experiência mais dinâmica e envolvente, valorizando tanto a música quanto sua proposta artística.\n\nEste foi um projeto bastate desafiador, exigindo um trabalho minucioso de direção criativa, concept, animação e sincronização visual. O resultado é uma peça que representa meu cuidado em transformar ideias em experiências visuais memoráveis e que ocupa um lugar especial no meu portfólio.",
+      "category": "Motion Design",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/m4bDRGHt28s",
+      "thumbUrl": "https://img.youtube.com/vi/m4bDRGHt28s/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "m4bDRGHt28s",
+      "createdAt": 1786029333026
+    },
+    {
       "id": "proj-1786028755967",
       "title": "Sexta-Feira 13 UsBR",
       "description": "Desenvolvido para o lançamento de \"Sexta-Feira 13\", de UsBR, este videoclipe com lyric traduz a narrativa da música em uma experiência visual intensa e imersiva. A produção acompanha o clima de uma festa que foge do controle, retratando o caos, os excessos e as consequências de uma noite de muita bebedeira, exatamente como a história é contada na letra.\n\nCom uma direção visual pensada para reforçar cada momento da canção, o projeto combina imagens, edição e a integração da letra à narrativa, criando uma experiência que conecta o público à música do início ao fim. O resultado é um videoclipe que vai além da exibição da letra: ele transforma a canção em uma história visual. Dê o play e descubra essa experiência.",
@@ -154,8 +166,9 @@
   ],
   "pinned": [
     "proj-1786028389594",
-    "proj-1786028755967"
+    "proj-1786028755967",
+    "proj-1786029333026"
   ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-06T15:05:56.575Z"
+  "updatedAt": "2026-08-06T15:15:33.683Z"
 }
