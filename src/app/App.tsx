@@ -2582,6 +2582,32 @@ function PortfolioApp() {
 
   const navLinks = [{ label: "Serviços", href: "#servicos" }, { label: "Trabalhos", href: "#trabalhos" }, { label: "Por que eu?", href: "#diferenciais" }, { label: "Contato", href: "#contato" }];
 
+  // O Hero só monta DEPOIS do fetch assíncrono do CMS (branch cms-data),
+  // ou seja, o <video autoPlay> nunca está presente no primeiro paint da
+  // página. Navegadores mobile (principalmente Safari/iOS) são muito mais
+  // rígidos com autoplay de elementos inseridos dinamicamente via JS depois
+  // do carregamento inicial do que com o atributo autoPlay declarado no HTML
+  // já presente no primeiro paint — nesses casos o autoplay é silenciosamente
+  // bloqueado e o vídeo fica parado no primeiro frame ("congelado"). Forçar
+  // `.muted` como propriedade do elemento (não só o atributo JSX) e chamar
+  // `.play()` explicitamente resolve isso de forma confiável em iOS e Android.
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (loading) return;
+    const v = heroVideoRef.current;
+    if (!v) return;
+    const tryPlay = () => {
+      v.muted = true;
+      const p = v.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    };
+    tryPlay();
+    // iOS/Android costumam pausar vídeos ao minimizar o app/trocar de aba;
+    // sem isso o Hero fica congelado ao voltar, mesmo com autoplay correto.
+    document.addEventListener("visibilitychange", tryPlay);
+    return () => document.removeEventListener("visibilitychange", tryPlay);
+  }, [loading]);
+
   if (loading) return <LoadingScreen />;
 
   return (
@@ -2645,8 +2671,10 @@ function PortfolioApp() {
           {/* Mobile: persona mais à direita (70%); Desktop: posição clássica (30%) */}
           <style>{`#hero-video { object-position: 70% top; } @media (min-width: 768px) { #hero-video { object-position: 30% top; } }`}</style>
           <video
+            ref={heroVideoRef}
             id="hero-video"
             src={heroVideo} autoPlay muted loop playsInline
+            onLoadedMetadata={e => { e.currentTarget.muted = true; e.currentTarget.play().catch(() => {}); }}
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-background/65" />
