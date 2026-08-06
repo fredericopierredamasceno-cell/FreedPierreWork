@@ -2785,8 +2785,8 @@ function PortfolioApp() {
       {/* ── HERO ── */}
       <section id="hero" className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
-          {/* Mobile: persona mais à direita (70%); Desktop: posição clássica (30%) */}
-          <style>{`#hero-video { object-position: 70% top; } @media (min-width: 768px) { #hero-video { object-position: 30% top; } }`}</style>
+          {/* Mobile: persona mais à direita (80%), coerente com o título; Desktop: posição clássica (30%) */}
+          <style>{`#hero-video { object-position: 80% top; } @media (min-width: 768px) { #hero-video { object-position: 30% top; } }`}</style>
           <video
             ref={heroVideoRef}
             id="hero-video"
