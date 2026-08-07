@@ -196,6 +196,7 @@
       "isFeatured": false
     }
   ],
+  "releases": [],
   "pinned": [
     "proj-1786028389594",
     "proj-1786029333026",
@@ -203,5 +204,14 @@
     "proj-1786110007524"
   ],
   "hiddenSeeds": [],
+  "designCategories": [
+    "Posts para Redes Sociais",
+    "Material Impresso",
+    "Identidade Visual",
+    "Branding",
+    "Editorial",
+    "Embalagens",
+    "Outros"
+  ],
   "updatedAt": "2026-08-07T15:29:59.210Z"
 }
