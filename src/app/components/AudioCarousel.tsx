@@ -1,3 +1,4 @@
+import { LayoutGroup } from "motion/react";
 import { Music } from "lucide-react";
 import type { CMSAudio } from "../lib/types";
 import { CATEGORY_COLORS } from "../lib/defaults";
@@ -20,16 +21,15 @@ export function AudioCarousel({ audios, showAdmin, onDelete }: {
   const pinnedAudio = audios.find(a => a.isFeatured) ?? null;
   const featuredAudio = pinnedAudio ?? activeAudio ?? audios[0] ?? null;
 
-  // Carrossel abaixo mostra apenas "as demais produções" — nunca repete a capa em destaque.
+  // Carrossel mostra apenas "as demais produções" — a capa em destaque nunca
+  // repete aqui, já que a mesma capa nunca existe em dois lugares ao mesmo
+  // tempo (é isso que permite a animação de "subir" para o destaque via
+  // layoutId, ver FeaturedAudioCard / AudioCoverThumb).
   const carouselAudios = featuredAudio ? audios.filter(a => a.id !== featuredAudio.id) : audios;
 
   const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll(carouselAudios.length);
 
   if (audios.length === 0 && !showAdmin) return null;
-
-  // Miniaturas do carrossel: apenas a capa (sem título/artista) — a capa em
-  // destaque acima é ~30% maior (ver FeaturedAudioCard: 144px vs 96px aqui).
-  const THUMB_SIZE = 96;
 
   return (
     <div className="space-y-4 w-full" style={{ maxWidth: "100%" }}>
@@ -52,29 +52,47 @@ export function AudioCarousel({ audios, showAdmin, onDelete }: {
         )}
       </div>
 
-      {/* Nível 1 — Produção em destaque */}
-      {featuredAudio && (
-        <FeaturedAudioCard audio={featuredAudio} playlist={audios} showAdmin={showAdmin} onDelete={showAdmin ? onDelete : undefined} />
-      )}
-
-      {/* Nível 2 — Carrossel horizontal apenas com as capas das demais produções */}
-      {carouselAudios.length > 0 && (
-        <div className="relative">
-          <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-          <div className={`absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity ${canRight ? "opacity-100" : "opacity-0"}`} />
-          <div
-            ref={scrollRef} onScroll={updateArrows} onWheel={onWheel}
-            className="flex gap-3 pb-2"
-            style={{ overflowX: "auto", width: "100%", maxWidth: "100%", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
-          >
-            {carouselAudios.map(a => (
-              <div key={a.id} data-card className="flex-shrink-0" style={{ scrollSnapAlign: "start" }}>
-                <AudioCoverThumb audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={handleToggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} size={THUMB_SIZE} />
+      {/*
+        Vitrine — a capa em destaque fica sobreposta (z-index) à esquerda, e o
+        carrossel de capas atravessa toda a largura passando visualmente por
+        trás dela (o carrossel começa em x:0, igual à capa; como a capa é
+        opaca e fica por cima, ela simplesmente encobre o início do carrossel
+        — não existe um "início ao lado", o carrossel nasce escondido atrás).
+        `--cell` define o tamanho (quadrado) da capa em destaque; a miniatura
+        do carrossel usa sempre --cell / 1.3, garantindo os ~30% de diferença
+        em qualquer largura de tela.
+      */}
+      {(featuredAudio || carouselAudios.length > 0) && (
+        <LayoutGroup id="audio-cover">
+          <div className="relative w-full [--cell:min(84vw,272px)] md:[--cell:168px] lg:[--cell:190px] h-[var(--cell)]">
+            {/* Nível 2 — carrossel horizontal, atrás (z-0), somente capas quadradas */}
+            {carouselAudios.length > 0 && (
+              <div className="absolute inset-0 z-0">
+                <div
+                  ref={scrollRef} onScroll={updateArrows} onWheel={onWheel}
+                  className="h-full flex items-center gap-3 md:gap-3.5"
+                  style={{ overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
+                >
+                  {carouselAudios.map(a => (
+                    <div key={a.id} data-card className="relative flex-shrink-0 w-[calc(var(--cell)/1.3)] h-[calc(var(--cell)/1.3)]" style={{ scrollSnapAlign: "start" }}>
+                      <AudioCoverThumb audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={handleToggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} />
+                    </div>
+                  ))}
+                  <div className="flex-shrink-0 w-3" />
+                </div>
+                {/* fade indicando mais capas à direita */}
+                <div className={`absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-background to-transparent pointer-events-none transition-opacity ${canRight ? "opacity-100" : "opacity-0"}`} />
               </div>
-            ))}
-            <div className="flex-shrink-0 w-2" />
+            )}
+
+            {/* Nível 1 — capa em destaque, sobreposta à esquerda (z-20, opaca) */}
+            {featuredAudio && (
+              <div className="absolute left-0 top-0 z-20 w-[var(--cell)] h-[var(--cell)]">
+                <FeaturedAudioCard audio={featuredAudio} playlist={audios} showAdmin={showAdmin} onDelete={showAdmin ? onDelete : undefined} />
+              </div>
+            )}
           </div>
-        </div>
+        </LayoutGroup>
       )}
 
       <MiniPlayer />
