@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Music } from "lucide-react";
 import type { CMSAudio } from "../lib/types";
-import { useAudioPlayer } from "../hooks/useAudioPlayer";
+import { useAudioPlayerState, useSyncPlaylist } from "../contexts/AudioPlayerContext";
 import { AudioCard } from "./AudioCard";
 import { MiniPlayer } from "./MiniPlayer";
 export function AudioGalleryView({ audios, showAdmin, onDeleteAudio }: { audios: CMSAudio[]; showAdmin: boolean; onDeleteAudio: (id: string) => void }) {
-  const player = useAudioPlayer(audios);
-  const { activeId, isPlaying, toggle, audioEl } = player;
+  const { activeId, isPlaying, toggle } = useAudioPlayerState();
+  useSyncPlaylist(audios);
+  const handleToggle = (id: string) => toggle(id, audios);
   const [filterGenre, setFilterGenre] = useState<string>("all");
 
   const genres = ["all", ...Array.from(new Set(audios.map(a => a.genre).filter(Boolean) as string[]))];
@@ -24,7 +25,6 @@ export function AudioGalleryView({ audios, showAdmin, onDeleteAudio }: { audios:
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {audioEl}
       {/* Genre filter */}
       {genres.length > 1 && (
         <div className="flex gap-2 px-5 md:px-8 py-3 border-b border-border flex-wrap">
@@ -40,14 +40,14 @@ export function AudioGalleryView({ audios, showAdmin, onDeleteAudio }: { audios:
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {filtered.map(a => (
             <div key={a.id} className="group">
-              <AudioCard audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={toggle} onDelete={showAdmin ? onDeleteAudio : undefined} showAdmin={showAdmin} size="md" />
+              <AudioCard audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={handleToggle} onDelete={showAdmin ? onDeleteAudio : undefined} showAdmin={showAdmin} size="md" />
             </div>
           ))}
         </div>
       </div>
       {/* Player bar */}
       <div className="border-t border-border px-5 md:px-8 py-3">
-        <MiniPlayer player={player} />
+        <MiniPlayer />
       </div>
     </div>
   );

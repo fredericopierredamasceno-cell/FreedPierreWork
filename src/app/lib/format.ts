@@ -15,7 +15,11 @@ export function fmtETA(s: number) {
   return s < 60 ? `~${Math.ceil(s)}s` : `~${Math.ceil(s / 60)}min`;
 }
 export function fmtTime(s: number) {
-  return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  const safe = isFinite(s) && s > 0 ? s : 0;
+  const total = Math.floor(safe);
+  const m = Math.floor(total / 60);
+  const sec = total % 60;
+  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 export const PHASE_LABELS: Record<UploadProgress["phase"], string> = {
   preparing: "Preparando", sending: "Enviando", processing: "Processando", done: "Concluído", error: "Erro",

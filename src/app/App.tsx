@@ -16,6 +16,7 @@ import { checkSession, endSession, renewSession } from "./lib/session";
 import { useCMS } from "./hooks/useCMS";
 import { useScrollProgress } from "./hooks/useScrollProgress";
 
+import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { FadeIn } from "./components/FadeIn";
 import { SectionLabel } from "./components/SectionLabel";
@@ -573,7 +574,9 @@ export function PortfolioApp() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <PortfolioApp />
+      <AudioPlayerProvider>
+        <PortfolioApp />
+      </AudioPlayerProvider>
     </ErrorBoundary>
   );
 }

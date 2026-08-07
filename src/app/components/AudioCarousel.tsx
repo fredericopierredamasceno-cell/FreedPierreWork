@@ -2,15 +2,16 @@ import { Music } from "lucide-react";
 import type { CMSAudio } from "../lib/types";
 import { CATEGORY_COLORS } from "../lib/defaults";
 import { useCarouselScroll } from "../hooks/useCarouselScroll";
-import { useAudioPlayer } from "../hooks/useAudioPlayer";
+import { useAudioPlayerState, useSyncPlaylist } from "../contexts/AudioPlayerContext";
 import { AudioCard } from "./AudioCard";
 import { MiniPlayer } from "./MiniPlayer";
 export function AudioCarousel({ audios, showAdmin, onDelete }: {
   audios: CMSAudio[]; showAdmin: boolean; onDelete: (id: string) => void;
 }) {
   const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll(audios.length);
-  const player = useAudioPlayer(audios);
-  const { activeId, isPlaying, toggle, audioEl } = player;
+  const { activeId, isPlaying, toggle } = useAudioPlayerState();
+  useSyncPlaylist(audios);
+  const handleToggle = (id: string) => toggle(id, audios);
 
   if (audios.length === 0 && !showAdmin) return null;
 
@@ -20,8 +21,6 @@ export function AudioCarousel({ audios, showAdmin, onDelete }: {
   return (
     /* max-w-full garante que o carrossel não expanda o pai sem quebrar o scroll */
     <div className="space-y-4 w-full" style={{ maxWidth: "100%" }}>
-      {audioEl}
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -50,14 +49,14 @@ export function AudioCarousel({ audios, showAdmin, onDelete }: {
         >
           {audios.map(a => (
             <div key={a.id} data-card className="flex-shrink-0" style={{ scrollSnapAlign: "start", width: CARD_W }}>
-              <AudioCard audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={toggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} size="sm" />
+              <AudioCard audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={handleToggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} size="sm" />
             </div>
           ))}
           <div className="flex-shrink-0 w-2" />
         </div>
       </div>
 
-      <MiniPlayer player={player} />
+      <MiniPlayer />
 
       {audios.length === 0 && showAdmin && (
         <div className="border border-dashed border-border py-8 text-center">
