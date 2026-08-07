@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Youtube, ImageIcon, Plus, X as XIcon, AlertCircle, CheckCircle2, ChevronUp, ChevronDown, GripVertical, Check } from "lucide-react";
 import type { CMSProject, UploadProgress } from "../lib/types";
-import { CATEGORIES } from "../lib/defaults";
+import { CATEGORIES, DESIGN_SERVICE_TITLE } from "../lib/defaults";
 import { parseVideoUrl } from "../lib/video";
 import { EditModalShell } from "./edit/EditModalShell";
 import { MediaReplaceField } from "./edit/MediaReplaceField";
@@ -17,16 +17,18 @@ type GallerySlot = { id: string; kind: "existing"; url: string } | { id: string;
  * design gráfico e futuras categorias compartilhem o mesmo comportamento
  * de gerenciamento sem duplicar UI.
  */
-export function EditProjectModal({ project, open, onClose, onSave, onToggleHidden, uploadFile, ghConfigured }: {
+export function EditProjectModal({ project, open, onClose, onSave, onToggleHidden, uploadFile, ghConfigured, designCategories }: {
   project: CMSProject | null; open: boolean; onClose: () => void;
   onSave: (updated: CMSProject) => Promise<void>;
   onToggleHidden: (id: string) => void;
   uploadFile: (f: File, t: "image" | "video" | "audio", onProgress: (p: UploadProgress) => void) => Promise<string | null>;
   ghConfigured: boolean;
+  designCategories: string[];
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
+  const [subcategory, setSubcategory] = useState("");
 
   // vídeo
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -50,6 +52,7 @@ export function EditProjectModal({ project, open, onClose, onSave, onToggleHidde
       setTitle(project.title);
       setDescription(project.description);
       setCategory(project.category);
+      setSubcategory(project.subcategory ?? "");
       setIsCarousel(!!project.isCarousel);
       const baseImages = project.images && project.images.length ? project.images : [project.mediaUrl];
       setGallery(baseImages.map((url, i) => ({ id: `existing-${i}-${url}`, kind: "existing", url })));
@@ -87,7 +90,7 @@ export function EditProjectModal({ project, open, onClose, onSave, onToggleHidde
     if (!title.trim() || busy) return;
     setBusy(true);
 
-    const updated: CMSProject = { ...project, title: title.trim(), description: description.trim(), category };
+    const updated: CMSProject = { ...project, title: title.trim(), description: description.trim(), category, subcategory: category === DESIGN_SERVICE_TITLE && subcategory ? subcategory : undefined };
 
     if (project.mediaType === "video") {
       if (mediaFile && ghConfigured) {
@@ -215,10 +218,22 @@ export function EditProjectModal({ project, open, onClose, onSave, onToggleHidde
         <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1.5">Categoria</label>
         <div className="grid grid-cols-2 gap-1.5">
           {CATEGORIES.map(c => (
-            <button key={c} type="button" onClick={() => setCategory(c)} className={`font-mono text-[9px] tracking-widest uppercase px-2 py-2 border text-left transition-colors ${category === c ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{c}</button>
+            <button key={c} type="button" onClick={() => { setCategory(c); if (c !== DESIGN_SERVICE_TITLE) setSubcategory(""); }} className={`font-mono text-[9px] tracking-widest uppercase px-2 py-2 border text-left transition-colors ${category === c ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{c}</button>
           ))}
         </div>
       </div>
+
+      {category === DESIGN_SERVICE_TITLE && (
+        <div>
+          <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1.5">Subcategoria (opcional)</label>
+          <div className="flex flex-wrap gap-1.5">
+            {designCategories.map(sc => (
+              <button key={sc} type="button" onClick={() => setSubcategory(subcategory === sc ? "" : sc)} className={`font-mono text-[9px] tracking-wider uppercase px-2.5 py-1.5 border transition-colors ${subcategory === sc ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>{sc}</button>
+            ))}
+          </div>
+          {designCategories.length === 0 && <p className="font-mono text-[9px] text-muted-foreground/60 mt-1">Nenhuma subcategoria criada ainda — gerencie em Admin → Serviços.</p>}
+        </div>
+      )}
     </EditModalShell>
   );
 }

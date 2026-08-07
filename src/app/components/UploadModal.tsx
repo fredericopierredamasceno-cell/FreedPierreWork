@@ -4,22 +4,24 @@ import {
   AlertCircle, CheckCircle2, Check, Loader2, GripVertical, ChevronUp, ChevronDown, Trash2,
 } from "lucide-react";
 import type { CMSProject, CMSAudio, UploadProgress } from "../lib/types";
-import { CATEGORIES, AUDIO_ACCEPT, AUDIO_GENRES } from "../lib/defaults";
+import { CATEGORIES, AUDIO_ACCEPT, AUDIO_GENRES, DESIGN_SERVICE_TITLE } from "../lib/defaults";
 import { MAX_FILE_BYTES } from "../lib/github";
 import { MAX_VIDEO_DIMENSION, parseVideoUrl, probeVideoDimensions } from "../lib/video";
 import { UploadProgressBar } from "./UploadProgressBar";
 export type UploadMode = "file" | "youtube" | "vimeo";
 export type UploadMediaType = "video" | "image" | "audio";
 
-export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigured }: {
+export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, ghConfigured, designCategories }: {
   open: boolean; onClose: () => void;
   onSave: (proj: CMSProject) => Promise<void>;
   onSaveAudio: (audio: CMSAudio) => Promise<void>;
   uploadFile: (f: File, t: "image" | "video" | "audio", onProgress: (p: UploadProgress) => void) => Promise<string | null>;
   ghConfigured: boolean;
+  designCategories: string[];
 }) {
   const [tab, setTab] = useState<UploadMediaType>("video");
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState(""); const [cat, setCat] = useState(CATEGORIES[0]);
+  const [subcat, setSubcat] = useState("");
   const [mode, setMode] = useState<UploadMode>("file");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
@@ -42,7 +44,7 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
   const [errMsg, setErrMsg] = useState("");
 
   const reset = useCallback(() => {
-    setTitle(""); setDesc(""); setCat(CATEGORIES[0]); setMode("file");
+    setTitle(""); setDesc(""); setCat(CATEGORIES[0]); setSubcat(""); setMode("file");
     setMediaFile(null); setThumbFile(null); setIsCarousel(false); setExtraImageFiles([]); setAudioFile(null); setAudioCoverFile(null);
     setArtist(""); setGenre(""); setVideoUrl(""); setParsedVideo(null); setThumbImgOk(true);
     setProgress(null); setProgress2(null); setOversize(false); setIncompatibleRes(null); setCheckingVideo(false); setBusy(false); setDone(false); setErrMsg("");
@@ -105,7 +107,7 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
 
     const embedReady = (mode === "youtube" || mode === "vimeo") && !!parsedVideo;
     if (embedReady) {
-      await onSave({ id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat, mediaType: "embed", mediaUrl: parsedVideo!.embed, thumbUrl: parsedVideo!.thumb || undefined, embedPlatform: parsedVideo!.platform, embedId: parsedVideo!.id, createdAt: Date.now() });
+      await onSave({ id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat, subcategory: cat === DESIGN_SERVICE_TITLE && subcat ? subcat : undefined, mediaType: "embed", mediaUrl: parsedVideo!.embed, thumbUrl: parsedVideo!.thumb || undefined, embedPlatform: parsedVideo!.platform, embedId: parsedVideo!.id, createdAt: Date.now() });
       setDone(true); setTimeout(() => { reset(); onClose(); }, 1000);
       return;
     }
@@ -131,6 +133,7 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
 
     await onSave({
       id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat,
+      subcategory: cat === DESIGN_SERVICE_TITLE && subcat ? subcat : undefined,
       mediaType: mType, mediaUrl,
       images: imagesUrls.length > 1 ? imagesUrls : undefined,
       isCarousel: imagesUrls.length > 1 ? true : undefined,
@@ -304,8 +307,20 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
             <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Título *</label><input value={title} onChange={e => setTitle(e.target.value)} placeholder="Nome do projeto" className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
             <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Descrição</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={3} className="w-full bg-muted border border-border px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary resize-none" /></div>
             <div><label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Categoria</label>
-              <div className="grid grid-cols-2 gap-2">{CATEGORIES.map(c => <button key={c} onClick={() => setCat(c)} className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2.5 border transition-colors text-left ${cat === c ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{c}</button>)}</div>
+              <div className="grid grid-cols-2 gap-2">{CATEGORIES.map(c => <button key={c} onClick={() => { setCat(c); if (c !== DESIGN_SERVICE_TITLE) setSubcat(""); }} className={`font-mono text-[10px] tracking-widest uppercase px-3 py-2.5 border transition-colors text-left ${cat === c ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{c}</button>)}</div>
             </div>
+
+            {cat === DESIGN_SERVICE_TITLE && (
+              <div>
+                <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Subcategoria (opcional)</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {designCategories.map(sc => (
+                    <button key={sc} type="button" onClick={() => setSubcat(subcat === sc ? "" : sc)} className={`font-mono text-[9px] tracking-wider uppercase px-2.5 py-1.5 border transition-colors ${subcat === sc ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>{sc}</button>
+                  ))}
+                </div>
+                {designCategories.length === 0 && <p className="font-mono text-[9px] text-muted-foreground/60 mt-1">Nenhuma subcategoria criada ainda — gerencie em Admin → Serviços.</p>}
+              </div>
+            )}
           </>)}
         </div>
 

@@ -70,7 +70,7 @@ export function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, 
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent pointer-events-none" />
       <div className="absolute bottom-0 left-0 right-0 p-3 md:p-5 pointer-events-none">
-        <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-0.5">{item.category}</div>
+        <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-0.5">{item.category}{item.subcategory ? ` · ${item.subcategory}` : ""}</div>
         <h3 className="text-base md:text-xl font-black uppercase text-foreground leading-tight line-clamp-2 break-words" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{item.title}</h3>
       </div>
       {(item.mediaType === "video" || isEmbed) && !playing && (

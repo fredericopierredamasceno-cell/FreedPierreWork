@@ -2,20 +2,23 @@ import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { X, MessageCircle, Pin, PinOff, Trash2, ArrowUpRight } from "lucide-react";
 import type { CMSAudio, DisplayProject } from "../lib/types";
-import { AUDIO_SERVICE_TITLE } from "../lib/defaults";
+import { AUDIO_SERVICE_TITLE, DESIGN_SERVICE_TITLE } from "../lib/defaults";
 import { ImageCarousel } from "./ImageCarousel";
 import { ProjectCard } from "./ProjectCard";
 import { AudioGalleryView } from "./AudioGalleryView";
-export function GalleryModal({ service, allProjects, audios, initialItem, onClose, showAdmin, onDelete, onDeleteAudio, onTogglePin, pinned }: {
+export function GalleryModal({ service, allProjects, audios, initialItem, onClose, showAdmin, onDelete, onDeleteAudio, onTogglePin, pinned, designCategories }: {
   service: { number: string; title: string; icon: ReactNode; galleryCategories: string[] } | null;
   allProjects: DisplayProject[]; audios: CMSAudio[];
   initialItem?: DisplayProject | null;
   onClose: () => void; showAdmin: boolean; onDelete: (id: string) => void;
   onDeleteAudio: (id: string) => void;
   onTogglePin: (id: string) => void; pinned: Set<string>;
+  designCategories: string[];
 }) {
   const [selected, setSelected] = useState<DisplayProject | null>(initialItem ?? null);
+  const [activeSubcat, setActiveSubcat] = useState<string | null>(null);
   useEffect(() => { setSelected(initialItem ?? null); }, [initialItem]);
+  useEffect(() => { setActiveSubcat(null); }, [service]);
   useEffect(() => {
     if (!service) return;
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") { if (selected) setSelected(null); else onClose(); } };
@@ -26,7 +29,14 @@ export function GalleryModal({ service, allProjects, audios, initialItem, onClos
   if (!service) return null;
 
   const isAudioService = service.galleryCategories.includes(AUDIO_SERVICE_TITLE);
-  const items = allProjects.filter(p => service.galleryCategories.includes(p.category));
+  const isDesignService = service.galleryCategories.includes(DESIGN_SERVICE_TITLE);
+  const allItemsInService = allProjects.filter(p => service.galleryCategories.includes(p.category));
+  const items = isDesignService && activeSubcat
+    ? allItemsInService.filter(p => (activeSubcat === "__uncategorized__" ? !p.subcategory : p.subcategory === activeSubcat))
+    : allItemsInService;
+  // Só mostra subcategorias que existem no CMS e têm ao menos um projeto — navegação sempre útil, nunca vazia.
+  const subcatsWithItems = designCategories.filter(sc => allItemsInService.some(p => p.subcategory === sc));
+  const hasUncategorized = allItemsInService.some(p => !p.subcategory);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center">
@@ -58,7 +68,7 @@ export function GalleryModal({ service, allProjects, audios, initialItem, onClos
               </div>
               <div className="border-t md:border-t-0 md:border-l border-border p-5 md:p-7 flex flex-col gap-4">
                 <div>
-                  <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-1">{selected.category}</div>
+                  <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-1">{selected.category}{selected.subcategory ? ` · ${selected.subcategory}` : ""}</div>
                   <h3 className="text-xl md:text-2xl font-black uppercase text-foreground leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{selected.title}</h3>
                 </div>
                 {selected.description && <div className="border-t border-border pt-4"><div className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase mb-2">Sobre o projeto</div><p className="text-sm text-muted-foreground leading-relaxed font-light whitespace-pre-line">{selected.description}</p></div>}
@@ -75,15 +85,34 @@ export function GalleryModal({ service, allProjects, audios, initialItem, onClos
                 </div>
               </div>
             </div>
-          ) : isAudioService ? null : items.length === 0 ? (
+          ) : isAudioService ? null : allItemsInService.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 px-6">
               <div className="w-12 h-12 border border-border flex items-center justify-center text-muted-foreground">{service.icon}</div>
               <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase text-center">Em breve — novos projetos aqui</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border">
-              {items.map(item => <ProjectCard key={item.id} item={item} showAdmin={showAdmin} isPinned={pinned.has(item.id)} onTogglePin={onTogglePin} onDelete={!item.isFixed ? onDelete : undefined} onClick={() => setSelected(item)} />)}
-            </div>
+            <>
+              {isDesignService && (subcatsWithItems.length > 0 || hasUncategorized) && (
+                <div className="flex flex-wrap gap-1.5 px-5 md:px-8 pt-4 pb-1">
+                  <button onClick={() => setActiveSubcat(null)} className={`font-mono text-[9px] tracking-wider uppercase px-2.5 py-1.5 border transition-colors ${activeSubcat === null ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>Todos</button>
+                  {subcatsWithItems.map(sc => (
+                    <button key={sc} onClick={() => setActiveSubcat(sc)} className={`font-mono text-[9px] tracking-wider uppercase px-2.5 py-1.5 border transition-colors ${activeSubcat === sc ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>{sc}</button>
+                  ))}
+                  {hasUncategorized && (
+                    <button onClick={() => setActiveSubcat("__uncategorized__")} className={`font-mono text-[9px] tracking-wider uppercase px-2.5 py-1.5 border transition-colors ${activeSubcat === "__uncategorized__" ? "border-primary text-primary bg-primary/10" : "border-border text-muted-foreground hover:border-primary/50"}`}>Outros</button>
+                  )}
+                </div>
+              )}
+              {items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3 px-6">
+                  <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase text-center">Nenhum projeto nessa categoria ainda</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border">
+                  {items.map(item => <ProjectCard key={item.id} item={item} showAdmin={showAdmin} isPinned={pinned.has(item.id)} onTogglePin={onTogglePin} onDelete={!item.isFixed ? onDelete : undefined} onClick={() => setSelected(item)} />)}
+                </div>
+              )}
+            </>
           )}
           {/* Galeria de áudio — renderizada quando é Produção Fonográfica e nada está selecionado */}
           {isAudioService && !selected && (

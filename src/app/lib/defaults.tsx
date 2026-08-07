@@ -81,6 +81,7 @@ export function makeCMSData(overrides: Partial<CMSData & { audio?: { name: strin
     releases: overrides.releases ?? [],
     pinned: overrides.pinned ?? [],
     hiddenSeeds: overrides.hiddenSeeds ?? [],
+    designCategories: overrides.designCategories?.length ? overrides.designCategories : DEFAULT_DESIGN_CATEGORIES,
     updatedAt: overrides.updatedAt ?? new Date().toISOString(),
   };
 }
@@ -98,6 +99,22 @@ export const ALL_SEEDS: DisplayProject[] = [
 ═══════════════════════════════════════════════════════════════════ */
 
 export const CATEGORIES = ["Motion Design", "Video Making", "Design Gráfico", "Produção Fonográfica"];
+
+// Nome do serviço cujo portfólio possui subcategorias flexíveis, gerenciadas via CMS.
+export const DESIGN_SERVICE_TITLE = "Design Gráfico";
+
+// Lista inicial (default de código) das subcategorias de Design Gráfico.
+// Serve apenas de ponto de partida — o admin pode criar, renomear e remover
+// livremente pelo painel; a lista efetiva vive em cms.designCategories.
+export const DEFAULT_DESIGN_CATEGORIES = [
+  "Posts para Redes Sociais",
+  "Material Impresso",
+  "Identidade Visual",
+  "Branding",
+  "Editorial",
+  "Embalagens",
+  "Outros",
+];
 
 export const CATEGORY_COLORS: Record<string, string> = {
   "Motion Design": "#E8863A",

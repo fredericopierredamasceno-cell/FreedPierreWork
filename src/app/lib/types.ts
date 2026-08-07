@@ -11,6 +11,7 @@ export interface PublishStep { id: string; label: string; status: "pending" | "r
 
 export interface CMSProject {
   id: string; title: string; description: string; category: string;
+  subcategory?: string; // subcategoria opcional, gerenciada via CMS (ex: dentro de "Design Gráfico")
   mediaType: "image" | "video" | "embed"; mediaUrl: string; thumbUrl?: string;
   images?: string[]; // múltiplas imagens para carrossel (Design)
   isCarousel?: boolean; // opção "Projeto em Carrossel" marcada no CMS (projetos antigos sem este campo continuam exibindo 1 imagem normalmente)
@@ -56,6 +57,7 @@ export interface CMSData {
   releases: CMSRelease[];
   pinned: string[];
   hiddenSeeds: string[];
+  designCategories: string[]; // subcategorias do portfólio de Design Gráfico, criadas via CMS (não fixas no código)
   updatedAt: string;
 }
 export type SaveStatus = "idle" | "saving" | "success" | "error";
