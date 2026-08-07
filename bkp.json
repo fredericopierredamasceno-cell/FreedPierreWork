@@ -99,6 +99,15 @@
   ],
   "projects": [
     {
+      "id": "proj-1786110007524",
+      "title": "Teste Ewz",
+      "description": "",
+      "category": "Design Gráfico",
+      "mediaType": "image",
+      "mediaUrl": "/uploads/images/1786110002049-Post_para_Instagram_Ewz-01.jpg",
+      "createdAt": 1786110007524
+    },
+    {
       "id": "proj-1786031156532",
       "title": "Alienado UsBR - Capa de single animada",
       "description": "Desenvolvida para o lançamento do single **\"Alienado\"**, da UsBR, esta capa animada nasceu de um processo colaborativo de direção criativa, passando pela concepção da ideia, desenvolvimento da ilustração, definição da identidade visual, paleta de cores e produção artística. Após a finalização da arte, o projeto ganhou uma nova dimensão por meio da animação, transformando uma capa estática em uma peça visual impactante para divulgação nas plataformas digitais.\n\nO objetivo foi ampliar a presença do lançamento, criando um conteúdo capaz de chamar a atenção do público em redes sociais, YouTube e serviços de streaming, sem perder a essência da identidade construída para o single.\n\nGravada no estúdio Pills Rec. e nos estúdios da EMP – Escola de Música Popular, em Belo Horizonte (MG), **\"Alienado\"** representa um projeto em que design, ilustração e animação trabalharam em conjunto para fortalecer a comunicação visual do lançamento. O resultado demonstra como uma capa pode ir além da arte estática e se tornar uma ferramenta estratégica de divulgação.",
@@ -190,8 +199,9 @@
   "pinned": [
     "proj-1786028389594",
     "proj-1786029333026",
-    "proj-1786031156532"
+    "proj-1786031156532",
+    "proj-1786110007524"
   ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-07T02:56:54.296Z"
+  "updatedAt": "2026-08-07T13:40:08.037Z"
 }
