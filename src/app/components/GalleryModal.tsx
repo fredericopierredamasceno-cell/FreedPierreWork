@@ -46,7 +46,7 @@ export function GalleryModal({ service, allProjects, audios, initialItem, onClos
         <div className={`flex-1 min-h-0 ${isAudioService && !selected ? "flex flex-col overflow-hidden" : "overflow-y-auto"}`}>
           {selected ? (
             <div className="flex flex-col md:grid md:grid-cols-[1fr_320px]">
-              <div className="bg-black flex items-center justify-center" style={{ minHeight: "clamp(200px,42vw,380px)" }}>
+              <div className="bg-black flex items-center justify-center group" style={{ minHeight: "clamp(200px,42vw,380px)" }}>
                 {selected.mediaType === "video" && <video src={selected.mediaUrl} controls autoPlay muted loop playsInline className="w-full h-full object-contain max-h-[55vh]" />}
                 {selected.mediaType === "embed" && selected.embedId && (
                   <iframe src={selected.embedPlatform === "youtube" ? `https://www.youtube.com/embed/${selected.embedId}?playsinline=1&rel=0` : `https://player.vimeo.com/video/${selected.embedId}?playsinline=1`} className="w-full aspect-video" allowFullScreen allow="autoplay; fullscreen; picture-in-picture; xr-spatial-tracking" style={{ border: 0 }} />

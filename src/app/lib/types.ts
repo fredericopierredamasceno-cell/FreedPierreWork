@@ -13,6 +13,7 @@ export interface CMSProject {
   id: string; title: string; description: string; category: string;
   mediaType: "image" | "video" | "embed"; mediaUrl: string; thumbUrl?: string;
   images?: string[]; // múltiplas imagens para carrossel (Design)
+  isCarousel?: boolean; // opção "Projeto em Carrossel" marcada no CMS (projetos antigos sem este campo continuam exibindo 1 imagem normalmente)
   embedPlatform?: "youtube" | "vimeo"; embedId?: string;
   isFixed?: boolean; createdAt: number;
 }

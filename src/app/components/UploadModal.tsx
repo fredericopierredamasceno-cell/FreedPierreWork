@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   X, Upload, Youtube, Link2, VideoIcon, ImageIcon, Music,
-  AlertCircle, CheckCircle2, Check, Loader2,
+  AlertCircle, CheckCircle2, Check, Loader2, GripVertical, ChevronUp, ChevronDown, Trash2,
 } from "lucide-react";
 import type { CMSProject, CMSAudio, UploadProgress } from "../lib/types";
 import { CATEGORIES, AUDIO_ACCEPT, AUDIO_GENRES } from "../lib/defaults";
@@ -23,6 +23,7 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
   const [mode, setMode] = useState<UploadMode>("file");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [isCarousel, setIsCarousel] = useState(false);
   const [extraImageFiles, setExtraImageFiles] = useState<File[]>([]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [audioCoverFile, setAudioCoverFile] = useState<File | null>(null);
@@ -42,7 +43,7 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
 
   const reset = useCallback(() => {
     setTitle(""); setDesc(""); setCat(CATEGORIES[0]); setMode("file");
-    setMediaFile(null); setThumbFile(null); setExtraImageFiles([]); setAudioFile(null); setAudioCoverFile(null);
+    setMediaFile(null); setThumbFile(null); setIsCarousel(false); setExtraImageFiles([]); setAudioFile(null); setAudioCoverFile(null);
     setArtist(""); setGenre(""); setVideoUrl(""); setParsedVideo(null); setThumbImgOk(true);
     setProgress(null); setProgress2(null); setOversize(false); setIncompatibleRes(null); setCheckingVideo(false); setBusy(false); setDone(false); setErrMsg("");
   }, []);
@@ -75,6 +76,18 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
     setMediaFile(f);
   };
 
+  // Reordenação das imagens extras — a ordem final define a ordem exibida no carrossel do site
+  const moveExtraImage = (from: number, to: number) => {
+    if (to < 0 || to >= extraImageFiles.length) return;
+    setExtraImageFiles(prev => {
+      const arr = [...prev];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      return arr;
+    });
+  };
+  const removeExtraImage = (i: number) => setExtraImageFiles(prev => prev.filter((_, idx) => idx !== i));
+
   const handleSave = async () => {
     if (!title.trim() || busy) return;
     setBusy(true); setErrMsg("");
@@ -103,9 +116,9 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
     const mediaUrl = await uploadFile(mediaFile, mType, setProgress);
     if (!mediaUrl) { setErrMsg("Falha no upload."); setBusy(false); return; }
 
-    // Upload extras (multi-image)
+    // Upload extras (carrossel) — mantém a ordem escolhida pelo administrador
     let imagesUrls: string[] = [];
-    if (mType === "image") {
+    if (mType === "image" && isCarousel) {
       imagesUrls = [mediaUrl];
       for (let i = 0; i < extraImageFiles.length; i++) {
         const u = await uploadFile(extraImageFiles[i], "image", () => {});
@@ -120,6 +133,7 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
       id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat,
       mediaType: mType, mediaUrl,
       images: imagesUrls.length > 1 ? imagesUrls : undefined,
+      isCarousel: imagesUrls.length > 1 ? true : undefined,
       thumbUrl, createdAt: Date.now(),
     });
     setDone(true); setTimeout(() => { reset(); onClose(); }, 1000);
@@ -221,12 +235,43 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
 
               {tab === "image" && (
                 <div>
-                  <label className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase block mb-2">Imagens adicionais (carrossel, opcional)</label>
-                  <div className="border-2 border-dashed border-border p-4 text-center cursor-pointer hover:border-primary/40 transition-colors" onClick={() => document.getElementById("extra-images-inp")?.click()}>
-                    <input id="extra-images-inp" type="file" accept="image/*" multiple className="hidden" onChange={e => { setExtraImageFiles(Array.from(e.target.files ?? [])); e.target.value = ""; }} />
-                    <div className="flex items-center justify-center gap-2 text-muted-foreground"><ImageIcon size={14} /><span className="text-xs font-mono tracking-wider uppercase">{extraImageFiles.length > 0 ? `${extraImageFiles.length} imagem(ns) extra(s)` : "Adicionar mais imagens"}</span></div>
-                  </div>
-                  <p className="font-mono text-[9px] text-muted-foreground/60 mt-1">Cria um carrossel estilo Instagram.</p>
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <button
+                      type="button"
+                      onClick={() => setIsCarousel(v => !v)}
+                      aria-pressed={isCarousel}
+                      className={`w-5 h-5 flex-shrink-0 flex items-center justify-center border transition-colors ${isCarousel ? "bg-primary border-primary text-background" : "border-border text-transparent"}`}
+                    >
+                      <Check size={12} strokeWidth={3} />
+                    </button>
+                    <span className="font-mono text-[10px] text-foreground tracking-widest uppercase">Projeto em Carrossel</span>
+                  </label>
+                  <p className="font-mono text-[9px] text-muted-foreground/60 mt-1 ml-[30px]">Permite várias imagens no mesmo projeto — exibidas como carrossel estilo Instagram no site.</p>
+
+                  {isCarousel && (
+                    <div className="mt-3 ml-[30px]">
+                      <div className="border-2 border-dashed border-border p-4 text-center cursor-pointer hover:border-primary/40 transition-colors" onClick={() => document.getElementById("extra-images-inp")?.click()}>
+                        <input id="extra-images-inp" type="file" accept="image/*" multiple className="hidden" onChange={e => { setExtraImageFiles(prev => [...prev, ...Array.from(e.target.files ?? [])]); e.target.value = ""; }} />
+                        <div className="flex items-center justify-center gap-2 text-muted-foreground"><ImageIcon size={14} /><span className="text-xs font-mono tracking-wider uppercase">Adicionar mais imagens</span></div>
+                      </div>
+                      <p className="font-mono text-[9px] text-muted-foreground/60 mt-1">A imagem principal acima entra como 1ª foto do carrossel. Use as setas para reordenar.</p>
+
+                      {extraImageFiles.length > 0 && (
+                        <ul className="mt-2 space-y-1.5">
+                          {extraImageFiles.map((f, i) => (
+                            <li key={`${f.name}-${i}`} className="flex items-center gap-2 bg-muted border border-border px-2.5 py-2">
+                              <GripVertical size={12} className="text-muted-foreground/50 flex-shrink-0" />
+                              <span className="font-mono text-[9px] text-muted-foreground flex-shrink-0">#{i + 2}</span>
+                              <span className="text-xs text-foreground truncate flex-1">{f.name}</span>
+                              <button type="button" disabled={i === 0} onClick={() => moveExtraImage(i, i - 1)} className="w-6 h-6 flex items-center justify-center text-muted-foreground disabled:opacity-25 hover:text-primary"><ChevronUp size={12} /></button>
+                              <button type="button" disabled={i === extraImageFiles.length - 1} onClick={() => moveExtraImage(i, i + 1)} className="w-6 h-6 flex items-center justify-center text-muted-foreground disabled:opacity-25 hover:text-primary"><ChevronDown size={12} /></button>
+                              <button type="button" onClick={() => removeExtraImage(i)} className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-300"><Trash2 size={12} /></button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
