@@ -10,9 +10,10 @@ import { Toaster, toast } from "sonner";
 import heroVideo from "../imports/Portf_lio_Video_Final_Ver.mp4";
 import logoImg from "../imports/Logo_Freed_Pierre.png";
 
-import type { CMSData, CMSProject, CMSAudio, DisplayProject } from "./lib/types";
+import type { CMSData, CMSProject, CMSAudio, CMSRelease, DisplayProject } from "./lib/types";
 import { ALL_SEEDS, SERVICE_ICONS, SERVICE_CATEGORIES, SERVICE_NUMBERS, CATEGORIES, CONTACT_LINKS } from "./lib/defaults";
-import { checkSession, endSession, renewSession } from "./lib/session";
+import { useAuth } from "./contexts/AuthContext";
+import { requireSupabase } from "./lib/supabase";
 
 import { useCMS } from "./hooks/useCMS";
 import { useScrollProgress } from "./hooks/useScrollProgress";
@@ -30,6 +31,8 @@ import { AudioCarousel } from "./components/AudioCarousel";
 import { UploadModal } from "./components/UploadModal";
 import { GalleryModal } from "./components/GalleryModal";
 import { AdminPanel } from "./components/AdminPanel";
+import { ReleasesSection } from "./components/ReleasesSection";
+import { ReleaseFormModal } from "./components/ReleaseFormModal";
 export function PortfolioApp() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -37,8 +40,11 @@ export function PortfolioApp() {
   const [galleryService, setGalleryService] = useState<{ number: string; title: string; icon: ReactNode; galleryCategories: string[] } | null>(null);
   const [galleryInitialItem, setGalleryInitialItem] = useState<DisplayProject | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [releaseFormOpen, setReleaseFormOpen] = useState(false);
+  const [editingRelease, setEditingRelease] = useState<CMSRelease | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [adminMode, setAdminMode] = useState(checkSession);
+  const { user } = useAuth();
+  const [adminMode, setAdminMode] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const progress = useScrollProgress();
 
@@ -48,9 +54,15 @@ export function PortfolioApp() {
   const pinned = new Set(cms.pinned);
   const hiddenSeeds = new Set(cms.hiddenSeeds);
   const visibleSeeds = ALL_SEEDS.filter(s => !hiddenSeeds.has(s.id));
-  const allProjects: DisplayProject[] = [...visibleSeeds, ...cms.projects];
+  // Projetos ocultos (vídeo, imagem, motion, design gráfico ou qualquer
+  // categoria futura) continuam salvos no CMS mas não aparecem no site —
+  // mesmo padrão já usado para os áudios.
+  const visibleUploadedProjects = cms.projects.filter(p => !p.hidden);
+  const allProjects: DisplayProject[] = [...visibleSeeds, ...visibleUploadedProjects];
   const featuredProjects = allProjects.filter(p => pinned.has(p.id));
-  const ghOk = !!ghConfig?.token;
+  const ghOk = !!ghConfig;
+  useEffect(() => { setAdminMode(!!user); }, [user]);
+  useEffect(() => { if (window.location.hash.includes("recovery") || window.location.hash.includes("admin-reset")) setShowLogin(true); }, []);
 
   // Build service list from CMS data
   const services = cms.services.map((s, i) => ({
@@ -76,7 +88,7 @@ export function PortfolioApp() {
   const _cmsLoaded = useRef(false);
   useEffect(() => {
     if (!_cmsLoaded.current) { _cmsLoaded.current = true; return; }
-    if (!adminMode || !ghConfig?.token) return;
+    if (!adminMode || user) return;
     _pendingSave.current = cms;
     if (_autoSaveTimer.current) clearTimeout(_autoSaveTimer.current);
     _autoSaveTimer.current = setTimeout(() => { silentSave(cms); _pendingSave.current = null; }, 2000);
@@ -97,21 +109,19 @@ export function PortfolioApp() {
   useEffect(() => {
     if (!adminMode) return;
     const iv = setInterval(() => {
-      if (!checkSession()) {
+      if (true) {
         setAdminMode(false); setAdminOpen(false);
         toast.info("Sessão expirada. Faça login novamente.");
         addLog("info", "Sessão admin expirada por inatividade.");
-      } else {
-        renewSession();
       }
     }, 60 * 1000);
     return () => clearInterval(iv);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminMode]);
+  }, [adminMode, user]);
 
   const scrollTo = (href: string) => { setMenuOpen(false); document.querySelector(href)?.scrollIntoView({ behavior: "smooth" }); };
-  const logout = () => {
-    endSession();
+  const logout = async () => {
+    await requireSupabase().auth.signOut();
     clearToken(); // credencial do GitHub não deve sobreviver ao fim da sessão admin
     setAdminMode(false); setAdminOpen(false);
     toast.info("Admin deslogado.");
@@ -150,7 +160,31 @@ export function PortfolioApp() {
 
   const handleTogglePin = (id: string) => setCms({ ...cms, pinned: pinned.has(id) ? cms.pinned.filter(p => p !== id) : [...cms.pinned, id] });
 
-  const navLinks = [{ label: "Serviços", href: "#servicos" }, { label: "Trabalhos", href: "#trabalhos" }, { label: "Por que eu?", href: "#diferenciais" }, { label: "Contato", href: "#contato" }];
+  // Lançamentos oficiais ("Ouça nas plataformas") — independentes do player
+  // de prévias (cms.audios). Criar/editar sempre publica imediatamente,
+  // igual ao fluxo de novo projeto/áudio.
+  const handleSaveRelease = async (release: CMSRelease) => {
+    const exists = cms.releases.some(r => r.id === release.id);
+    const updated: CMSData = {
+      ...cms,
+      releases: exists ? cms.releases.map(r => (r.id === release.id ? release : r)) : [release, ...cms.releases],
+    };
+    await publish(updated);
+  };
+
+  const handleDeleteRelease = async (id: string) => {
+    const r = cms.releases.find(r => r.id === id);
+    if (r?.coverUrl?.startsWith("/uploads/")) await deleteFile(r.coverUrl);
+    await publish({ ...cms, releases: cms.releases.filter(r => r.id !== id) });
+  };
+
+  const handleToggleHideRelease = (id: string) =>
+    setCms({ ...cms, releases: cms.releases.map(r => (r.id === id ? { ...r, hidden: !r.hidden } : r)) });
+
+  const openNewRelease = () => { setEditingRelease(null); setReleaseFormOpen(true); };
+  const openEditRelease = (r: CMSRelease) => { setEditingRelease(r); setReleaseFormOpen(true); };
+
+  const navLinks = [{ label: "Serviços", href: "#servicos" }, { label: "Trabalhos", href: "#trabalhos" }, { label: "Por que eu?", href: "#diferenciais" }, { label: "Lançamentos", href: "#plataformas" }, { label: "Contato", href: "#contato" }];
 
   // O Hero só monta DEPOIS do fetch assíncrono do CMS (branch cms-data),
   // ou seja, o <video autoPlay> nunca está presente no primeiro paint da
@@ -233,7 +267,8 @@ export function PortfolioApp() {
       <AdminLoginModal open={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setAdminMode(true); toast.success("Admin autenticado."); addLog("success", "Admin autenticado."); }} />
       <GalleryModal service={galleryService} allProjects={allProjects} audios={adminMode ? cms.audios : cms.audios.filter(a => !a.hidden)} initialItem={galleryInitialItem} onClose={() => { setGalleryService(null); setGalleryInitialItem(null); }} showAdmin={adminMode} onDelete={handleDeleteProject} onDeleteAudio={handleDeleteAudio} onTogglePin={handleTogglePin} pinned={pinned} />
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSave={handleAddProject} onSaveAudio={handleAddAudio} uploadFile={uploadFile} ghConfigured={ghOk} />
-      <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} />
+      <ReleaseFormModal release={editingRelease} open={releaseFormOpen} onClose={() => { setReleaseFormOpen(false); setEditingRelease(null); }} onSave={handleSaveRelease} onToggleHidden={handleToggleHideRelease} uploadFile={uploadFile} ghConfigured={ghOk} />
+      <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} onOpenReleaseForm={(r) => { setAdminOpen(false); if (r) openEditRelease(r); else openNewRelease(); }} onDeleteRelease={handleDeleteRelease} onToggleHideRelease={handleToggleHideRelease} />
 
       {/* Floating "Disponível" badge — fixed bottom-right, visible everywhere */}
       <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer"
@@ -501,6 +536,17 @@ export function PortfolioApp() {
           </div>
         </div>
       </section>
+
+      {/* ── LANÇAMENTOS (plataformas) ── */}
+      {/* Independente do player de prévias acima — divulga lançamentos oficiais já disponíveis em streaming. */}
+      <ReleasesSection
+        releases={cms.releases}
+        showAdmin={adminMode}
+        onAdd={openNewRelease}
+        onEdit={openEditRelease}
+        onToggleHide={handleToggleHideRelease}
+        onDelete={handleDeleteRelease}
+      />
 
       {/* ── STATS ── */}
       <section className="border-y border-border bg-card/40 py-8 md:py-10">
