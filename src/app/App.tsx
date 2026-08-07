@@ -10,7 +10,7 @@ import { Toaster, toast } from "sonner";
 import heroVideo from "../imports/Portf_lio_Video_Final_Ver.mp4";
 import logoImg from "../imports/Logo_Freed_Pierre.png";
 
-import type { CMSData, CMSProject, CMSAudio, DisplayProject } from "./lib/types";
+import type { CMSData, CMSProject, CMSAudio, CMSRelease, DisplayProject } from "./lib/types";
 import { ALL_SEEDS, SERVICE_ICONS, SERVICE_CATEGORIES, SERVICE_NUMBERS, CATEGORIES, CONTACT_LINKS } from "./lib/defaults";
 import { checkSession, endSession, renewSession } from "./lib/session";
 
@@ -30,6 +30,8 @@ import { AudioCarousel } from "./components/AudioCarousel";
 import { UploadModal } from "./components/UploadModal";
 import { GalleryModal } from "./components/GalleryModal";
 import { AdminPanel } from "./components/AdminPanel";
+import { ReleasesSection } from "./components/ReleasesSection";
+import { ReleaseFormModal } from "./components/ReleaseFormModal";
 export function PortfolioApp() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -37,6 +39,8 @@ export function PortfolioApp() {
   const [galleryService, setGalleryService] = useState<{ number: string; title: string; icon: ReactNode; galleryCategories: string[] } | null>(null);
   const [galleryInitialItem, setGalleryInitialItem] = useState<DisplayProject | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [releaseFormOpen, setReleaseFormOpen] = useState(false);
+  const [editingRelease, setEditingRelease] = useState<CMSRelease | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminMode, setAdminMode] = useState(checkSession);
   const [showLogin, setShowLogin] = useState(false);
@@ -154,7 +158,31 @@ export function PortfolioApp() {
 
   const handleTogglePin = (id: string) => setCms({ ...cms, pinned: pinned.has(id) ? cms.pinned.filter(p => p !== id) : [...cms.pinned, id] });
 
-  const navLinks = [{ label: "Serviços", href: "#servicos" }, { label: "Trabalhos", href: "#trabalhos" }, { label: "Por que eu?", href: "#diferenciais" }, { label: "Contato", href: "#contato" }];
+  // Lançamentos oficiais ("Ouça nas plataformas") — independentes do player
+  // de prévias (cms.audios). Criar/editar sempre publica imediatamente,
+  // igual ao fluxo de novo projeto/áudio.
+  const handleSaveRelease = async (release: CMSRelease) => {
+    const exists = cms.releases.some(r => r.id === release.id);
+    const updated: CMSData = {
+      ...cms,
+      releases: exists ? cms.releases.map(r => (r.id === release.id ? release : r)) : [release, ...cms.releases],
+    };
+    await publish(updated);
+  };
+
+  const handleDeleteRelease = async (id: string) => {
+    const r = cms.releases.find(r => r.id === id);
+    if (r?.coverUrl?.startsWith("/uploads/")) await deleteFile(r.coverUrl);
+    await publish({ ...cms, releases: cms.releases.filter(r => r.id !== id) });
+  };
+
+  const handleToggleHideRelease = (id: string) =>
+    setCms({ ...cms, releases: cms.releases.map(r => (r.id === id ? { ...r, hidden: !r.hidden } : r)) });
+
+  const openNewRelease = () => { setEditingRelease(null); setReleaseFormOpen(true); };
+  const openEditRelease = (r: CMSRelease) => { setEditingRelease(r); setReleaseFormOpen(true); };
+
+  const navLinks = [{ label: "Serviços", href: "#servicos" }, { label: "Trabalhos", href: "#trabalhos" }, { label: "Por que eu?", href: "#diferenciais" }, { label: "Lançamentos", href: "#plataformas" }, { label: "Contato", href: "#contato" }];
 
   // O Hero só monta DEPOIS do fetch assíncrono do CMS (branch cms-data),
   // ou seja, o <video autoPlay> nunca está presente no primeiro paint da
@@ -237,7 +265,8 @@ export function PortfolioApp() {
       <AdminLoginModal open={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setAdminMode(true); toast.success("Admin autenticado."); addLog("success", "Admin autenticado."); }} />
       <GalleryModal service={galleryService} allProjects={allProjects} audios={adminMode ? cms.audios : cms.audios.filter(a => !a.hidden)} initialItem={galleryInitialItem} onClose={() => { setGalleryService(null); setGalleryInitialItem(null); }} showAdmin={adminMode} onDelete={handleDeleteProject} onDeleteAudio={handleDeleteAudio} onTogglePin={handleTogglePin} pinned={pinned} />
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSave={handleAddProject} onSaveAudio={handleAddAudio} uploadFile={uploadFile} ghConfigured={ghOk} />
-      <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} />
+      <ReleaseFormModal release={editingRelease} open={releaseFormOpen} onClose={() => { setReleaseFormOpen(false); setEditingRelease(null); }} onSave={handleSaveRelease} onToggleHidden={handleToggleHideRelease} uploadFile={uploadFile} ghConfigured={ghOk} />
+      <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} onOpenReleaseForm={(r) => { setAdminOpen(false); if (r) openEditRelease(r); else openNewRelease(); }} onDeleteRelease={handleDeleteRelease} onToggleHideRelease={handleToggleHideRelease} />
 
       {/* Floating "Disponível" badge — fixed bottom-right, visible everywhere */}
       <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer"
@@ -505,6 +534,17 @@ export function PortfolioApp() {
           </div>
         </div>
       </section>
+
+      {/* ── LANÇAMENTOS (plataformas) ── */}
+      {/* Independente do player de prévias acima — divulga lançamentos oficiais já disponíveis em streaming. */}
+      <ReleasesSection
+        releases={cms.releases}
+        showAdmin={adminMode}
+        onAdd={openNewRelease}
+        onEdit={openEditRelease}
+        onToggleHide={handleToggleHideRelease}
+        onDelete={handleDeleteRelease}
+      />
 
       {/* ── STATS ── */}
       <section className="border-y border-border bg-card/40 py-8 md:py-10">

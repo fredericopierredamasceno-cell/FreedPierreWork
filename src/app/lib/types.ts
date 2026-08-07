@@ -32,6 +32,16 @@ export interface CMSServiceContent {
   title: string; description: string; tags: string[];
 }
 
+// Lançamento oficial já disponível em plataformas de streaming — seção
+// "Ouça nas plataformas", independente do player de prévias (CMSAudio).
+export interface CMSRelease {
+  id: string; title: string; artist: string; coverUrl?: string;
+  spotifyUrl: string; // obrigatório
+  appleMusicUrl?: string; deezerUrl?: string; youtubeMusicUrl?: string; // opcionais
+  createdAt: number;
+  hidden?: boolean; // ocultar da visualização pública sem apagar (admin ainda vê)
+}
+
 export interface CMSAdvantageContent {
   title: string; body: string;
 }
@@ -43,6 +53,7 @@ export interface CMSData {
   advantages: CMSAdvantageContent[];
   projects: CMSProject[];
   audios: CMSAudio[];
+  releases: CMSRelease[];
   pinned: string[];
   hiddenSeeds: string[];
   updatedAt: string;

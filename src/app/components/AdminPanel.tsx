@@ -2,21 +2,22 @@ import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import {
   Settings, Plus, X, Pin, Trash2, Upload, Youtube, Music, Star,
-  Github, Library, FolderOpen, FileText, Sparkles, Paintbrush, Info, ScrollText,
+  Github, Library, FolderOpen, FileText, Sparkles, Paintbrush, Info, ScrollText, Disc,
 } from "lucide-react";
 import type {
-  GitHubConfig, CMSData, CMSAudio, CMSProject, UploadProgress, LogEntry, SaveStatus,
+  GitHubConfig, CMSData, CMSAudio, CMSProject, CMSRelease, UploadProgress, LogEntry, SaveStatus,
   CMSServiceContent, CMSAdvantageContent, AdminTab,
 } from "../lib/types";
 import type { SiteContent, SiteTheme } from "../lib/defaults";
 import { ALL_SEEDS, SERVICE_NUMBERS } from "../lib/defaults";
+import { releaseLinks } from "../lib/platformIcons";
 import { GitHubConfigTab } from "./GitHubConfigTab";
 import { MediaLibraryTab } from "./MediaLibraryTab";
 import { EditAudioModal } from "./EditAudioModal";
 import { EditProjectModal } from "./EditProjectModal";
 import { VisibilityToggleButton, VisibilityBadge } from "./edit/VisibilityToggleButton";
 import { LogsTab } from "./LogsTab";
-export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFile, syncFromGitHub, ghConfig, setGhConfig, clearGhConfig, saveStatus, saveError, logs, onOpenUpload }: {
+export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFile, syncFromGitHub, ghConfig, setGhConfig, clearGhConfig, saveStatus, saveError, logs, onOpenUpload, onOpenReleaseForm, onDeleteRelease, onToggleHideRelease }: {
   open: boolean; onClose: () => void; cms: CMSData; setCms: (d: CMSData) => void;
   publish: (d: CMSData) => Promise<boolean>;
   uploadFile: (f: File, t: "image" | "video" | "audio", onProgress: (p: UploadProgress) => void) => Promise<string | null>;
@@ -24,6 +25,9 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
   syncFromGitHub: () => Promise<boolean>;
   ghConfig: GitHubConfig | null; setGhConfig: (c: GitHubConfig) => void; clearGhConfig: () => void;
   saveStatus: SaveStatus; saveError: string; logs: LogEntry[]; onOpenUpload: () => void;
+  onOpenReleaseForm: (release?: CMSRelease) => void;
+  onDeleteRelease: (id: string) => Promise<void>;
+  onToggleHideRelease: (id: string) => void;
 }) {
   const [tab, setTab] = useState<AdminTab>("github");
   const [editingAudio, setEditingAudio] = useState<CMSAudio | null>(null);
@@ -276,6 +280,38 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
 
               {/* EditAudioModal */}
               <EditAudioModal audio={editingAudio} open={!!editingAudio} onClose={() => setEditingAudio(null)} onSave={saveAudio} uploadFile={uploadFile} ghConfigured={!!ghConfig?.token} />
+
+              {/* Lançamentos — "Ouça nas plataformas" (independente do player de prévias acima) */}
+              <div>
+                <div className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase mb-3 flex items-center gap-2"><span className="w-2 h-2 bg-blue-400" />Lançamentos ({cms.releases.length})</div>
+                {cms.releases.length === 0
+                  ? <div className="border border-dashed border-border py-8 flex flex-col items-center gap-3"><Disc size={18} className="text-muted-foreground" /><p className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">Nenhum — divulgue um lançamento oficial</p><button onClick={() => onOpenReleaseForm()} className="flex items-center gap-2 bg-primary text-background px-4 py-2 font-bold text-xs tracking-widest uppercase"><Plus size={10} />Novo lançamento</button></div>
+                  : <>
+                      {cms.releases.map(r => (
+                        <div key={r.id} className={`border mb-1 ${r.hidden ? "border-border/40 opacity-50" : "border-border"}`}>
+                          <div className="flex items-center gap-2 p-2">
+                            <div className="w-10 h-10 flex-shrink-0 overflow-hidden border border-border">
+                              {r.coverUrl ? <img src={r.coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-muted flex items-center justify-center"><Disc size={12} className="text-muted-foreground" /></div>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{r.title}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-mono text-[9px] text-muted-foreground">{r.artist}</p>
+                                <span className="font-mono text-[8px] px-1 bg-primary/10 text-primary">{releaseLinks(r).length} link(s)</span>
+                                <VisibilityBadge hidden={!!r.hidden} />
+                              </div>
+                            </div>
+                            <div className="flex gap-1 flex-shrink-0">
+                              <button onClick={() => { onClose(); onOpenReleaseForm(r); }} title="Editar" className="font-mono text-[9px] px-2 py-1 border border-border text-muted-foreground hover:border-primary hover:text-primary">✏</button>
+                              <VisibilityToggleButton hidden={!!r.hidden} onToggle={() => onToggleHideRelease(r.id)} />
+                              <button onClick={() => { if (confirm("Remover lançamento permanentemente?")) onDeleteRelease(r.id); }} title="Deletar permanentemente" className="font-mono text-[9px] px-2 py-1 border border-red-500/40 text-red-400"><Trash2 size={8} /></button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button onClick={() => { onClose(); onOpenReleaseForm(); }} className="flex items-center gap-2 font-mono text-[10px] text-primary border border-primary/30 px-3 py-1.5 hover:bg-primary/10 transition-colors mt-1"><Plus size={10} />Novo lançamento</button>
+                    </>}
+              </div>
             </div>
           )}
 
@@ -345,7 +381,7 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
         </div>
 
         <div className="border-t border-border px-5 py-3 flex items-center justify-between flex-shrink-0">
-          <span className="font-mono text-[10px] text-muted-foreground">{ALL_SEEDS.length + cms.projects.length} proj · {cms.audios.length} áudio · {!ghOk ? "⚠ sem token" : "✓ GitHub ok"}</span>
+          <span className="font-mono text-[10px] text-muted-foreground">{ALL_SEEDS.length + cms.projects.length} proj · {cms.audios.length} áudio · {cms.releases.length} lançamento(s) · {!ghOk ? "⚠ sem token" : "✓ GitHub ok"}</span>
           <button onClick={onClose} className="font-mono text-xs text-muted-foreground uppercase tracking-widest">Fechar</button>
         </div>
       </div>
