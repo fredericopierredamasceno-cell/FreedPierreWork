@@ -78,7 +78,6 @@ export function makeCMSData(overrides: Partial<CMSData & { audio?: { name: strin
     advantages: overrides.advantages?.length ? overrides.advantages : DEFAULT_ADVANTAGES,
     projects: overrides.projects ?? [],
     audios,
-    releases: overrides.releases ?? [],
     pinned: overrides.pinned ?? [],
     hiddenSeeds: overrides.hiddenSeeds ?? [],
     updatedAt: overrides.updatedAt ?? new Date().toISOString(),
