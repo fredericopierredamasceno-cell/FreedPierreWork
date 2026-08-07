@@ -153,7 +153,8 @@
       "genre": "Trap",
       "url": "/uploads/audio/1786047401624-Trap_Maybe_com_vozes__Mix_Foda__.mp3",
       "coverUrl": "/uploads/images/1786047408132-00012-3211548865.png",
-      "createdAt": 1786047410609
+      "createdAt": 1786047410609,
+      "isFeatured": false
     },
     {
       "id": "audio-1786027013066",
@@ -163,7 +164,8 @@
       "url": "/uploads/audio/1786027004289-Nice_Bass.mp3",
       "coverUrl": "/uploads/images/1786027009741-f17bd481-6071-488e-bfc8-481f06631dcf.jpeg",
       "createdAt": 1786027013066,
-      "hidden": false
+      "hidden": false,
+      "isFeatured": false
     },
     {
       "id": "audio-1786026877866",
@@ -171,7 +173,8 @@
       "genre": "Mix",
       "url": "/uploads/audio/1786026868782-Me_And_My_Crew_Mix_Estudo.mp3",
       "coverUrl": "/uploads/images/1786071309403-ChatGPT_Image_6_de_ago._de_2026__23_54_49.png",
-      "createdAt": 1786026877866
+      "createdAt": 1786026877866,
+      "isFeatured": true
     },
     {
       "id": "audio-1785987301656",
@@ -180,7 +183,8 @@
       "genre": "Beat",
       "url": "/uploads/audio/1785987295678-Gta_Style.mp3",
       "coverUrl": "/uploads/images/1785987299378-00020-75290831.png",
-      "createdAt": 1785987301656
+      "createdAt": 1785987301656,
+      "isFeatured": false
     }
   ],
   "pinned": [
@@ -189,5 +193,5 @@
     "proj-1786031156532"
   ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-06T20:16:51.130Z"
+  "updatedAt": "2026-08-07T02:56:54.296Z"
 }
