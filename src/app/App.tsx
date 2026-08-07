@@ -233,6 +233,16 @@ export function PortfolioApp() {
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSave={handleAddProject} onSaveAudio={handleAddAudio} uploadFile={uploadFile} ghConfigured={ghOk} />
       <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} />
 
+      {/* Floating "Disponível" badge — fixed bottom-right, visible everywhere */}
+      <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-background border border-primary/60 px-4 py-2 shadow-lg hover:border-primary transition-colors group"
+        style={{ backdropFilter: "blur(8px)" }}
+      >
+        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse flex-shrink-0" />
+        <span className="font-mono text-[10px] text-primary tracking-[0.2em] uppercase group-hover:text-primary/80">{content.heroBadge}</span>
+        <ArrowUpRight size={10} className="text-primary/70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+      </a>
+
       {/* Progress bar */}
       <div className="fixed top-0 left-0 h-[2px] bg-primary z-[100]" style={{ width: `${progress * 100}%`, transition: "width 60ms linear" }} />
 
@@ -282,6 +292,15 @@ export function PortfolioApp() {
               #hero-video { object-position: 30% top; }
               #hero-overlay { background: rgba(7,8,15,0.65); }
             }
+            /* Hero title: mesmo clamp fluido do desktop, com piso maior no mobile
+               (telas < 768px) para melhorar a leitura sem quebrar linha nem
+               estourar o container — mesma tipografia, peso e alinhamento. */
+            .hero-title-line { font-size: clamp(2rem, 6.7vw, 6rem); }
+            .hero-title-line-outline { font-size: clamp(2.5rem, 8.9vw, 8rem); }
+            @media (max-width: 767px) {
+              .hero-title-line { font-size: clamp(2.25rem, 8vw, 3.25rem); }
+              .hero-title-line-outline { font-size: clamp(2.6rem, 9.6vw, 3.9rem); }
+            }
           `}</style>
           <video
             ref={heroVideoRef}
@@ -301,10 +320,10 @@ export function PortfolioApp() {
 
         <div className="relative z-10 w-full max-w-6xl mx-auto px-5 md:px-8 text-left pt-20 md:pt-0">
           <h1 className="font-black uppercase leading-[0.88] mb-5 md:mb-8 text-left" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
-            <span className="block text-foreground" style={{ fontSize: "clamp(2rem, 6.7vw, 6rem)" }}>{content.heroLine1}</span>
-            <span className="block text-primary" style={{ fontSize: "clamp(2rem, 6.7vw, 6rem)" }}>{content.heroLine2}</span>
-            <span className="block text-foreground" style={{ fontSize: "clamp(2rem, 6.7vw, 6rem)" }}>{content.heroLine3}</span>
-            <span className="block" style={{ fontSize: "clamp(2.5rem, 8.9vw, 8rem)", WebkitTextStroke: "clamp(1px, 0.18vw, 2px) rgba(237,233,226,0.55)", color: "transparent" }}>{content.heroLine4}</span>
+            <span className="hero-title-line block text-foreground">{content.heroLine1}</span>
+            <span className="hero-title-line block text-primary">{content.heroLine2}</span>
+            <span className="hero-title-line block text-foreground">{content.heroLine3}</span>
+            <span className="hero-title-line-outline block" style={{ WebkitTextStroke: "clamp(1px, 0.18vw, 2px) rgba(237,233,226,0.55)", color: "transparent" }}>{content.heroLine4}</span>
           </h1>
           <p className="text-muted-foreground font-light text-sm md:text-lg max-w-sm md:max-w-xl mb-7 md:mb-10 leading-relaxed">{content.heroSubtitle}</p>
           <div className="flex flex-col sm:flex-row gap-3">
