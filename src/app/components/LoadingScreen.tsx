@@ -1,100 +1,146 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import logoImg from "../../imports/Logo_Freed_Pierre.png";
-export const BOOT_SEQUENCE = [
-  "INICIALIZANDO SISTEMA...",
-  "MONTANDO MÓDULO DE DESIGN...",
-  "CARREGANDO ASSETS DE VÍDEO...",
-  "SINCRONIZANDO TRILHAS DE ÁUDIO...",
-  "RENDERIZANDO MOTION GRAPHICS...",
-  "COMPILANDO PORTFÓLIO...",
-  "SISTEMA PRONTO.",
-];
+
+/* Ciclo curto e suave — o "playhead" varre o painel inteiro nesse tempo,
+   disparando o flash sequencial dos keyframes e dos swatches. */
+const CYCLE = 2.4;
+
+/* Alturas do waveform pré-computadas (não randômicas) para um contorno
+   de onda deliberado, não um jitter aleatório. */
+const WAVE_BARS = Array.from({ length: 26 }, (_, i) => {
+  const t = i / 25;
+  const h = 26 + Math.abs(Math.sin(t * Math.PI * 2.4)) * 62 + Math.sin(t * Math.PI * 9) * 10;
+  return Math.max(16, Math.min(100, h));
+});
+
+const KEYFRAME_POSITIONS = [0, 25, 50, 75, 100];
+const SWATCH_COUNT = 10;
 
 export function LoadingScreen() {
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setProgress(p => (p >= 100 ? 100 : Math.min(100, p + Math.random() * 9 + 3)));
-    }, 220);
-    return () => clearInterval(t);
-  }, []);
-
-  const lineIndex = Math.min(BOOT_SEQUENCE.length - 1, Math.floor((progress / 100) * BOOT_SEQUENCE.length));
-  const visibleLines = BOOT_SEQUENCE.slice(0, lineIndex + 1).slice(-4);
+  const waveDelays = useMemo(() => WAVE_BARS.map((_, i) => (i * 0.045).toFixed(3)), []);
 
   return (
-    <div className="fixed inset-0 z-[200] bg-background flex items-center justify-center overflow-hidden">
-      {/* scanlines CRT */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "repeating-linear-gradient(0deg, #fff 0px, #fff 1px, transparent 1px, transparent 3px)" }} />
-      {/* grid de fundo com vinheta radial */}
+    <div
+      className="fixed inset-0 z-[200] bg-background flex items-center justify-center overflow-hidden fp-loading"
+      role="status"
+      aria-live="polite"
+      aria-label="Carregando portfólio"
+    >
+      {/* textura sutil de fundo — mantém a linguagem do site sem competir com o painel */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.18]"
+        className="pointer-events-none absolute inset-0 opacity-[0.035]"
         style={{
-          backgroundImage: "linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)",
-          backgroundSize: "42px 42px",
-          maskImage: "radial-gradient(circle at center, black, transparent 72%)",
-          WebkitMaskImage: "radial-gradient(circle at center, black, transparent 72%)",
+          backgroundImage:
+            "linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+          maskImage: "radial-gradient(circle at center, black, transparent 70%)",
+          WebkitMaskImage: "radial-gradient(circle at center, black, transparent 70%)",
         }}
       />
 
-      {/* cantos HUD */}
-      <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-primary/40" />
-      <div className="absolute top-6 right-6 w-8 h-8 border-t-2 border-r-2 border-primary/40" />
-      <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-primary/40" />
-      <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-primary/40" />
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 font-mono text-[9px] text-muted-foreground tracking-[0.35em] uppercase hidden sm:block">Rec ● Portfólio.sys</div>
-      <div className="absolute bottom-6 right-1/2 translate-x-1/2 font-mono text-[9px] text-muted-foreground tracking-[0.35em] uppercase hidden sm:block">V2.0.26</div>
+      <div className="relative z-10 w-[86%] max-w-xs flex flex-col items-center" style={{ animation: "fp-fadein 0.6s ease-out" }}>
+        {/* logo — respiração suave, sem spinner */}
+        <img
+          src={logoImg}
+          alt="Freed Pierre"
+          className="h-9 w-auto brightness-200 mb-10"
+          style={{ animation: `fp-breathe ${CYCLE}s ease-in-out infinite` }}
+        />
 
-      <div className="relative z-10 w-[88%] max-w-sm flex flex-col items-center gap-9">
-        {/* logo com radar/scan */}
-        <div className="relative w-32 h-32 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full border border-primary/15" />
-          <div className="absolute inset-3 rounded-full border border-primary/10" />
+        {/* painel de timeline — playhead varrendo 3 trilhas: áudio / motion / design */}
+        <div className="relative w-full">
           <div
-            className="absolute inset-0 rounded-full"
-            style={{
-              background: "conic-gradient(from 0deg, transparent 0%, var(--primary) 10%, transparent 22%)",
-              maskImage: "radial-gradient(circle, transparent 58%, black 60%, black 100%)",
-              WebkitMaskImage: "radial-gradient(circle, transparent 58%, black 60%, black 100%)",
-              animation: "fp-radar-spin 2.2s linear infinite",
-            }}
-          />
-          <img src={logoImg} alt="" className="relative z-10 h-10 w-auto brightness-200" style={{ animation: "fp-flicker 3.4s infinite" }} />
-        </div>
-
-        {/* log de boot estilo terminal */}
-        <div className="w-full h-[72px] flex flex-col justify-end font-mono text-[10px] tracking-widest overflow-hidden">
-          {visibleLines.map((line, i) => {
-            const isLast = i === visibleLines.length - 1;
-            return (
-              <div key={line} className={`truncate ${isLast ? "text-primary" : "text-muted-foreground opacity-40"}`}>
-                {isLast ? "> " : "✓ "}{line}{isLast && <span className="inline-block w-1.5 h-2.5 bg-primary ml-1 align-middle" style={{ animation: "fp-caret 0.9s steps(1) infinite" }} />}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* barra de progresso HUD */}
-        <div className="w-full">
-          <div className="flex justify-between font-mono text-[10px] text-primary tracking-[0.3em] mb-2">
-            <span>BOOT.EXE</span>
-            <span className="tabular-nums">{Math.floor(progress)}%</span>
+            className="absolute inset-y-0 w-px bg-primary z-10"
+            style={{ animation: `fp-scan ${CYCLE}s linear infinite`, boxShadow: "0 0 10px var(--primary), 0 0 2px var(--primary)" }}
+          >
+            <span
+              className="absolute -top-[5px] -left-[3px] w-[7px] h-[7px] bg-primary"
+              style={{ clipPath: "polygon(50% 100%, 0 0, 100% 0)" }}
+            />
           </div>
-          <div className="w-full h-2 bg-muted/40 border border-primary/30 relative overflow-hidden">
-            <div className="h-full bg-primary transition-all duration-150 ease-out" style={{ width: `${progress}%`, boxShadow: "0 0 14px var(--primary)" }} />
-            <div className="absolute inset-0 flex">
-              {Array.from({ length: 24 }).map((_, i) => <div key={i} className="flex-1 border-r border-background/50 last:border-r-0" />)}
+
+          <div className="flex flex-col gap-5">
+            {/* Trilha 1 — Produção Musical: waveform contínuo, vivo */}
+            <div>
+              <div className="font-mono text-[8px] text-muted-foreground tracking-[0.28em] uppercase mb-2">Produção Musical</div>
+              <div className="flex items-end gap-[3px] h-7">
+                {WAVE_BARS.map((h, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 rounded-full"
+                    style={{
+                      height: `${h}%`,
+                      background: "var(--primary)",
+                      opacity: 0.55,
+                      animation: `fp-wave 1.15s ease-in-out ${waveDelays[i]}s infinite alternate`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Trilha 2 — Motion Design: linha de keyframes acesos pelo playhead */}
+            <div>
+              <div className="font-mono text-[8px] text-muted-foreground tracking-[0.28em] uppercase mb-2">Motion Design</div>
+              <div className="relative h-7 flex items-center">
+                <div className="absolute inset-x-0 top-1/2 h-px bg-border" />
+                {KEYFRAME_POSITIONS.map((pos, i) => (
+                  <div
+                    key={i}
+                    className="absolute top-1/2 w-2 h-2 border border-border"
+                    style={{
+                      left: `${pos}%`,
+                      transform: "translate(-50%, -50%) rotate(45deg)",
+                      background: "var(--background)",
+                      animation: `fp-pulse-diamond ${CYCLE}s ease-in-out ${(pos / 100) * CYCLE}s infinite`,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Trilha 3 — Design Gráfico: swatches/grade acesos em sequência pelo playhead */}
+            <div>
+              <div className="font-mono text-[8px] text-muted-foreground tracking-[0.28em] uppercase mb-2">Design Gráfico</div>
+              <div className="flex items-center gap-[3px] h-7">
+                {Array.from({ length: SWATCH_COUNT }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 h-full rounded-[2px] border border-border"
+                    style={{
+                      background: "var(--muted)",
+                      animation: `fp-pulse-swatch ${CYCLE}s ease-in-out ${(i / SWATCH_COUNT) * CYCLE}s infinite`,
+                    }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-          <div className="mt-3 text-center font-mono text-[9px] text-muted-foreground tracking-[0.25em] uppercase">Freed Pierre · Design / Motion / Vídeo / Áudio</div>
+        </div>
+
+        <div className="mt-9 font-mono text-[9px] text-muted-foreground tracking-[0.3em] uppercase text-center">
+          Preparando experiência
         </div>
       </div>
 
       <style>{`
-        @keyframes fp-radar-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes fp-flicker { 0%,100%{opacity:1} 91%{opacity:1} 92%{opacity:.35} 93%{opacity:1} 96%{opacity:.55} 97%{opacity:1} }
-        @keyframes fp-caret { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+        @keyframes fp-fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fp-breathe { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+        @keyframes fp-scan { 0% { left: 0%; } 100% { left: 100%; } }
+        @keyframes fp-wave { 0% { transform: scaleY(0.55); opacity: 0.4; } 100% { transform: scaleY(1); opacity: 0.85; } }
+        @keyframes fp-pulse-diamond {
+          0%, 92%, 100% { background: var(--background); border-color: var(--border); box-shadow: none; }
+          4% { background: var(--primary); border-color: var(--primary); box-shadow: 0 0 8px var(--primary); }
+          16% { background: var(--background); border-color: var(--border); box-shadow: none; }
+        }
+        @keyframes fp-pulse-swatch {
+          0%, 88%, 100% { background: var(--muted); border-color: var(--border); box-shadow: none; }
+          4% { background: var(--primary); border-color: var(--primary); box-shadow: 0 0 8px var(--primary); }
+          18% { background: var(--muted); border-color: var(--border); box-shadow: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .fp-loading * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+        }
       `}</style>
     </div>
   );

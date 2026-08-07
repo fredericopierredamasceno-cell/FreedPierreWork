@@ -1,5 +1,5 @@
 /* Site copy defaults, theme defaults, seed content and CMS-record factory */
-import { Palette, Film, Sparkles, Mic, MessageCircle, Mail } from "lucide-react";
+import { Palette, Film, Sparkles, Mic, MessageCircle, Mail, Linkedin, Instagram } from "lucide-react";
 import type { CMSServiceContent, CMSAdvantageContent, CMSData, DisplayProject } from "./types";
 import pizzaVideo from "../../imports/Lan_amento_Pizza_Ifood.mp4";
 export const CONTENT_DEFAULTS = {
@@ -114,6 +114,8 @@ export const AUDIO_ACCEPT = "audio/mpeg,audio/wav,audio/ogg,audio/aac,audio/mp4,
 export const CONTACT_LINKS = [
   { icon: <MessageCircle size={18} />, label: "WhatsApp", value: "(31) 97579-1151", href: "https://wa.me/5531975791151" },
   { icon: <Mail size={18} />, label: "E-mail", value: "fredericopierredamasceno@gmail.com", href: "mailto:fredericopierredamasceno@gmail.com" },
+  { icon: <Linkedin size={18} />, label: "LinkedIn", value: "linkedin.com/in/fredericopierre", href: "https://www.linkedin.com/in/fredericopierre" },
+  { icon: <Instagram size={18} />, label: "Instagram", value: "@freedpierre", href: "https://www.instagram.com/freedpierre/" },
 ];
 export const AUDIO_GENRES = ["Trap", "Beat", "Gospel", "Eletrônico", "Hip-Hop", "R&B", "Pop", "Funk", "Samba", "Reggaeton", "Lofi", "Instrumental", "Mix", "Outro"];
 export const AUDIO_SERVICE_TITLE = "Produção Fonográfica";

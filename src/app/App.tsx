@@ -4,6 +4,7 @@ import {
   Mail, Menu, X, ChevronDown, Mic, Film, Palette,
   MessageCircle, ArrowUpRight, Play, Upload, Trash2, Plus,
   Sparkles, Settings, LogOut, Loader2, CheckCircle2,
+  Linkedin, Instagram,
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import heroVideo from "../imports/Portf_lio_Video_Final_Ver.mp4";
@@ -282,25 +283,26 @@ export function PortfolioApp() {
       {/* ── HERO ── */}
       <section id="hero" className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
-          {/* Mobile: vídeo alinhado 60% à esquerda (sujeito mais centralizado/à esquerda no quadro);
-             overlay em gradiente horizontal — bem escuro atrás do texto (esquerda) e mais claro à
-             direita, para o vídeo aparecer ao lado da headline em vez de "por baixo" dela.
+          {/* Mobile: vídeo alinhado 60% à esquerda (sujeito mais centralizado/à esquerda no quadro),
+             sem overlay escuro atrás do título — o vídeo fica como protagonista, sem gradiente
+             preto entre ele e o texto.
              Desktop: mantém a composição clássica original (30%, overlay uniforme). */}
           <style>{`
             #hero-video { object-position: 60% top; }
-            #hero-overlay { background: linear-gradient(100deg, rgba(7,8,15,0.97) 0%, rgba(7,8,15,0.94) 52%, rgba(7,8,15,0.55) 76%, rgba(7,8,15,0.28) 100%); }
+            #hero-overlay { background: none; }
             @media (min-width: 768px) {
               #hero-video { object-position: 30% top; }
               #hero-overlay { background: rgba(7,8,15,0.65); }
             }
-            /* Hero title: mesmo clamp fluido do desktop, com piso maior no mobile
-               (telas < 768px) para melhorar a leitura sem quebrar linha nem
-               estourar o container — mesma tipografia, peso e alinhamento. */
+            /* Hero title: mesmo clamp fluido do desktop, com piso e curva maiores no mobile
+               (telas < 768px) para dar o mesmo impacto visual do desktop — calibrado para a
+               linha mais longa ("E MOVIMENTOS" / "SE ENCONTRAM") nunca quebrar, cortar ou
+               estourar a largura da tela em nenhum viewport mobile. */
             .hero-title-line { font-size: clamp(2rem, 6.7vw, 6rem); }
             .hero-title-line-outline { font-size: clamp(2.5rem, 8.9vw, 8rem); }
             @media (max-width: 767px) {
-              .hero-title-line { font-size: clamp(2.25rem, 8vw, 3.25rem); }
-              .hero-title-line-outline { font-size: clamp(2.6rem, 9.6vw, 3.9rem); }
+              .hero-title-line { font-size: clamp(2.4rem, 11vw, 5.25rem); white-space: nowrap; }
+              .hero-title-line-outline { font-size: clamp(2.6rem, 11.3vw, 5.5rem); white-space: nowrap; }
             }
           `}</style>
           <video
@@ -326,6 +328,10 @@ export function PortfolioApp() {
             <span className="hero-title-line block text-foreground">{content.heroLine3}</span>
             <span className="hero-title-line-outline block" style={{ WebkitTextStroke: "clamp(1px, 0.18vw, 2px) rgba(237,233,226,0.55)", color: "transparent" }}>{content.heroLine4}</span>
           </h1>
+          <div className="flex items-center gap-4 mb-5 md:mb-6">
+            <a href="https://www.linkedin.com/in/fredericopierre" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={18} /></a>
+            <a href="https://www.instagram.com/freedpierre/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-muted-foreground hover:text-primary transition-colors"><Instagram size={18} /></a>
+          </div>
           <p className="text-muted-foreground font-light text-sm md:text-lg max-w-sm md:max-w-xl mb-7 md:mb-10 leading-relaxed">{content.heroSubtitle}</p>
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={() => scrollTo("#servicos")} className="flex items-center justify-center gap-2 bg-primary text-background px-7 py-3.5 font-bold text-sm tracking-widest uppercase hover:bg-primary/85 transition-colors">Ver serviços</button>
@@ -553,6 +559,8 @@ export function PortfolioApp() {
             <div className="flex items-center gap-5">
               <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle size={18} /></a>
               <a href="mailto:fredericopierredamasceno@gmail.com" className="text-muted-foreground hover:text-primary transition-colors"><Mail size={18} /></a>
+              <a href="https://www.linkedin.com/in/fredericopierre" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={18} /></a>
+              <a href="https://www.instagram.com/freedpierre/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-muted-foreground hover:text-primary transition-colors"><Instagram size={18} /></a>
             </div>
           </div>
           <div className="hidden md:grid grid-cols-3 items-center">
@@ -563,6 +571,8 @@ export function PortfolioApp() {
             <div className="flex justify-end items-center gap-4">
               <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle size={16} /></a>
               <a href="mailto:fredericopierredamasceno@gmail.com" className="text-muted-foreground hover:text-primary transition-colors"><Mail size={16} /></a>
+              <a href="https://www.linkedin.com/in/fredericopierre" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={16} /></a>
+              <a href="https://www.instagram.com/freedpierre/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-muted-foreground hover:text-primary transition-colors"><Instagram size={16} /></a>
             </div>
           </div>
         </div>
