@@ -14,8 +14,8 @@
     "stat3Label": "Perfil criativo",
     "stat4Val": "ECAD",
     "stat4Label": "Cadastrado",
-    "servicesHeading1": "Cada projeto pede",
-    "servicesHeading2": "uma solução diferente.",
+    "servicesHeading1": "Cada projeto pede uma",
+    "servicesHeading2": "solução diferente.",
     "difHeading1": "Menos",
     "difHeading2": "intermediários.",
     "difHeading3": "Mais resultado.",
@@ -70,11 +70,12 @@
       "title": "Produção Fonográfica",
       "description": "Toda música começa antes da gravação. Produzo cada projeto pensando na identidade sonora, nos detalhes e na emoção que ele precisa transmitir, até a entrega final pronta para lançamento.",
       "tags": [
-        "Direção Musical",
-        "Produção",
+        "FL Studio",
+        "Reaper",
         "Mixagem",
         "Masterização",
-        "Streaming"
+        "Streaming",
+        "ECAD"
       ]
     }
   ],
@@ -202,5 +203,5 @@
     "proj-1786110007524"
   ],
   "hiddenSeeds": [],
-  "updatedAt": "2026-08-07T14:31:45.896Z"
+  "updatedAt": "2026-08-07T14:35:23.047Z"
 }
