@@ -48,7 +48,11 @@ export function PortfolioApp() {
   const pinned = new Set(cms.pinned);
   const hiddenSeeds = new Set(cms.hiddenSeeds);
   const visibleSeeds = ALL_SEEDS.filter(s => !hiddenSeeds.has(s.id));
-  const allProjects: DisplayProject[] = [...visibleSeeds, ...cms.projects];
+  // Projetos ocultos (vídeo, imagem, motion, design gráfico ou qualquer
+  // categoria futura) continuam salvos no CMS mas não aparecem no site —
+  // mesmo padrão já usado para os áudios.
+  const visibleUploadedProjects = cms.projects.filter(p => !p.hidden);
+  const allProjects: DisplayProject[] = [...visibleSeeds, ...visibleUploadedProjects];
   const featuredProjects = allProjects.filter(p => pinned.has(p.id));
   const ghOk = !!ghConfig?.token;
 

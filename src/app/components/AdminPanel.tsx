@@ -1,18 +1,20 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import {
-  Settings, Plus, X, Pin, Trash2, Upload, Check, Youtube, Music, Eye, EyeOff, Star,
+  Settings, Plus, X, Pin, Trash2, Upload, Youtube, Music, Star,
   Github, Library, FolderOpen, FileText, Sparkles, Paintbrush, Info, ScrollText,
 } from "lucide-react";
 import type {
-  GitHubConfig, CMSData, CMSAudio, UploadProgress, LogEntry, SaveStatus,
+  GitHubConfig, CMSData, CMSAudio, CMSProject, UploadProgress, LogEntry, SaveStatus,
   CMSServiceContent, CMSAdvantageContent, AdminTab,
 } from "../lib/types";
 import type { SiteContent, SiteTheme } from "../lib/defaults";
-import { CATEGORIES, ALL_SEEDS, SERVICE_NUMBERS } from "../lib/defaults";
+import { ALL_SEEDS, SERVICE_NUMBERS } from "../lib/defaults";
 import { GitHubConfigTab } from "./GitHubConfigTab";
 import { MediaLibraryTab } from "./MediaLibraryTab";
 import { EditAudioModal } from "./EditAudioModal";
+import { EditProjectModal } from "./EditProjectModal";
+import { VisibilityToggleButton, VisibilityBadge } from "./edit/VisibilityToggleButton";
 import { LogsTab } from "./LogsTab";
 export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFile, syncFromGitHub, ghConfig, setGhConfig, clearGhConfig, saveStatus, saveError, logs, onOpenUpload }: {
   open: boolean; onClose: () => void; cms: CMSData; setCms: (d: CMSData) => void;
@@ -24,10 +26,8 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
   saveStatus: SaveStatus; saveError: string; logs: LogEntry[]; onOpenUpload: () => void;
 }) {
   const [tab, setTab] = useState<AdminTab>("github");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState(""); const [editDesc, setEditDesc] = useState(""); const [editCat, setEditCat] = useState(CATEGORIES[0]);
-  const [savedId, setSavedId] = useState<string | null>(null);
   const [editingAudio, setEditingAudio] = useState<CMSAudio | null>(null);
+  const [editingProject, setEditingProject] = useState<CMSProject | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -80,9 +80,23 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
     setEditingAudio(null);
   };
 
-  const saveEdit = async (id: string) => {
-    setCms({ ...cms, projects: cms.projects.map(p => p.id === id ? { ...p, title: editTitle, description: editDesc, category: editCat } : p) });
-    setSavedId(id); setTimeout(() => { setSavedId(null); setEditingId(null); }, 800);
+  const saveProject = async (updated: CMSProject) => {
+    setCms({ ...cms, projects: cms.projects.map(p => p.id === updated.id ? updated : p) });
+    setEditingProject(null);
+  };
+
+  // Ocultar não apaga — some do site, continua salvo no CMS e pode ser
+  // reativado a qualquer momento. Vale para vídeo, imagem, motion, design
+  // gráfico e qualquer categoria futura (mesmo padrão usado nos áudios).
+  const toggleHideProject = (id: string) => {
+    const proj = cms.projects.find(p => p.id === id);
+    if (!proj) return;
+    const nowHidden = !proj.hidden;
+    setCms({
+      ...cms,
+      projects: cms.projects.map(p => p.id === id ? { ...p, hidden: nowHidden } : p),
+      pinned: nowHidden ? cms.pinned.filter(pid => pid !== id) : cms.pinned,
+    });
   };
 
   const updContent = (k: keyof SiteContent, v: string) => setCms({ ...cms, content: { ...cms.content, [k]: v } });
@@ -154,7 +168,17 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
 
           {tab === "github" && <GitHubConfigTab ghConfig={ghConfig} onSave={setGhConfig} onClear={clearGhConfig} onPublish={() => publish(cms)} onSync={syncFromGitHub} cms={cms} saveStatus={saveStatus} saveError={saveError} />}
 
-          {tab === "midias" && <MediaLibraryTab cms={cms} onDeleteProject={delUpload} onDeleteAudio={delAudio} />}
+          {tab === "midias" && (
+            <MediaLibraryTab
+              cms={cms}
+              onDeleteProject={delUpload}
+              onDeleteAudio={delAudio}
+              onEditProject={setEditingProject}
+              onEditAudio={setEditingAudio}
+              onToggleHideProject={toggleHideProject}
+              onToggleHideAudio={toggleHideAudio}
+            />
+          )}
 
           {tab === "uploads" && (
             <div className="space-y-4">
@@ -188,36 +212,36 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
                   : cms.projects.map(p => {
                       const isPin = pinned.has(p.id); const isEmbed = p.mediaType === "embed";
                       return (
-                        <div key={p.id} className="border border-border mb-1">
-                          {editingId === p.id
-                            ? <div className="p-3 space-y-2">
-                                <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
-                                <textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} rows={2} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary resize-none" />
-                                <div className="grid grid-cols-2 gap-1">{CATEGORIES.map(c => <button key={c} onClick={() => setEditCat(c)} className={`font-mono text-[9px] py-1.5 border ${editCat === c ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{c}</button>)}</div>
-                                <div className="flex gap-2"><button onClick={() => saveEdit(p.id)} className={`flex items-center gap-1 px-3 py-1.5 font-bold text-[10px] tracking-widest uppercase ${savedId === p.id ? "bg-green-600 text-white" : "bg-primary text-background"}`}><Check size={10} />{savedId === p.id ? "Salvo!" : "Salvar"}</button><button onClick={() => setEditingId(null)} className="font-mono text-[10px] text-muted-foreground">Cancelar</button></div>
+                        <div key={p.id} className={`border mb-1 ${p.hidden ? "border-border/40 opacity-50" : "border-border"}`}>
+                          <div className="flex items-center gap-2 p-2">
+                            <div className="w-12 h-9 flex-shrink-0 bg-card overflow-hidden relative">
+                              {isEmbed && p.thumbUrl && <img src={p.thumbUrl} alt="" className="w-full h-full object-cover" />}
+                              {isEmbed && !p.thumbUrl && <div className="w-full h-full flex items-center justify-center"><Youtube size={12} className="text-red-400" /></div>}
+                              {!isEmbed && p.mediaType === "video" && <video src={p.mediaUrl} muted className="w-full h-full object-cover" />}
+                              {!isEmbed && p.mediaType === "image" && <img src={(p.images?.[0] ?? p.thumbUrl ?? p.mediaUrl)} alt="" className="w-full h-full object-cover" loading="lazy" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{p.title}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`font-mono text-[9px] uppercase ${isPin ? "text-primary" : "text-muted-foreground"}`}>{isPin ? "● Destaque" : "○ Galeria"}</span>
+                                {p.images && p.images.length > 1 && <span className="font-mono text-[9px] text-muted-foreground">×{p.images.length} imagens</span>}
+                                <VisibilityBadge hidden={!!p.hidden} />
                               </div>
-                            : <div className="flex items-center gap-2 p-2">
-                                <div className="w-12 h-9 flex-shrink-0 bg-card overflow-hidden relative">
-                                  {isEmbed && p.thumbUrl && <img src={p.thumbUrl} alt="" className="w-full h-full object-cover" />}
-                                  {isEmbed && !p.thumbUrl && <div className="w-full h-full flex items-center justify-center"><Youtube size={12} className="text-red-400" /></div>}
-                                  {!isEmbed && p.mediaType === "video" && <video src={p.mediaUrl} muted className="w-full h-full object-cover" />}
-                                  {!isEmbed && p.mediaType === "image" && <img src={(p.images?.[0] ?? p.thumbUrl ?? p.mediaUrl)} alt="" className="w-full h-full object-cover" loading="lazy" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{p.title}</div>
-                                  <span className={`font-mono text-[9px] uppercase ${isPin ? "text-primary" : "text-muted-foreground"}`}>{isPin ? "● Destaque" : "○ Galeria"}</span>
-                                  {p.images && p.images.length > 1 && <span className="font-mono text-[9px] text-muted-foreground ml-2">×{p.images.length} imagens</span>}
-                                </div>
-                                <div className="flex gap-1">
-                                  <button onClick={() => togglePin(p.id)} className={`font-mono text-[9px] px-2 py-1 border ${isPin ? "border-primary text-primary" : "border-border text-muted-foreground"}`}><Pin size={8} /></button>
-                                  <button onClick={() => { setEditingId(p.id); setEditTitle(p.title); setEditDesc(p.description); setEditCat(p.category); }} className="font-mono text-[9px] px-2 py-1 border border-border text-muted-foreground">✏</button>
-                                  <button onClick={() => delUpload(p.id)} className="font-mono text-[9px] px-2 py-1 border border-red-500/40 text-red-400"><Trash2 size={8} /></button>
-                                </div>
-                              </div>}
+                            </div>
+                            <div className="flex gap-1 flex-shrink-0">
+                              {!p.hidden && <button onClick={() => togglePin(p.id)} className={`font-mono text-[9px] px-2 py-1 border ${isPin ? "border-primary text-primary" : "border-border text-muted-foreground"}`}><Pin size={8} /></button>}
+                              <button onClick={() => setEditingProject(p)} title="Editar" className="font-mono text-[9px] px-2 py-1 border border-border text-muted-foreground hover:border-primary hover:text-primary">✏</button>
+                              <VisibilityToggleButton hidden={!!p.hidden} onToggle={() => toggleHideProject(p.id)} />
+                              <button onClick={() => delUpload(p.id)} title="Deletar permanentemente" className="font-mono text-[9px] px-2 py-1 border border-red-500/40 text-red-400"><Trash2 size={8} /></button>
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
               </div>
+
+              {/* EditProjectModal — edição completa (vídeo, imagem/carrossel, embed) */}
+              <EditProjectModal project={editingProject} open={!!editingProject} onClose={() => setEditingProject(null)} onSave={saveProject} onToggleHidden={toggleHideProject} uploadFile={uploadFile} ghConfigured={!!ghConfig?.token} />
 
               {/* Audio */}
               <div>
@@ -236,13 +260,13 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
                             {a.artist && <p className="font-mono text-[9px] text-muted-foreground">{a.artist}</p>}
                             {a.genre && <span className="font-mono text-[8px] px-1 bg-primary/10 text-primary">{a.genre}</span>}
                             {a.isFeatured && <span className="font-mono text-[8px] px-1 bg-primary/20 text-primary uppercase">★ Destaque</span>}
-                            {a.hidden && <span className="font-mono text-[8px] px-1 bg-red-500/20 text-red-400 uppercase">Oculto</span>}
+                            <VisibilityBadge hidden={!!a.hidden} />
                           </div>
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
                           <button onClick={() => toggleFeaturedAudio(a.id)} title={a.isFeatured ? "Remover destaque" : "Fixar como destaque"} className={`font-mono text-[9px] px-2 py-1 border ${a.isFeatured ? "border-primary text-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}><Star size={8} className={a.isFeatured ? "fill-current" : ""} /></button>
                           <button onClick={() => setEditingAudio(a)} title="Editar" className="font-mono text-[9px] px-2 py-1 border border-border text-muted-foreground hover:border-primary hover:text-primary">✏</button>
-                          <button onClick={() => toggleHideAudio(a.id)} title={a.hidden ? "Mostrar" : "Ocultar"} className={`font-mono text-[9px] px-2 py-1 border ${a.hidden ? "border-green-500/40 text-green-400" : "border-yellow-500/40 text-yellow-400"}`}>{a.hidden ? <Eye size={8} /> : <EyeOff size={8} />}</button>
+                          <VisibilityToggleButton hidden={!!a.hidden} onToggle={() => toggleHideAudio(a.id)} />
                           <button onClick={() => delAudio(a.id)} title="Deletar permanentemente" className="font-mono text-[9px] px-2 py-1 border border-red-500/40 text-red-400"><Trash2 size={8} /></button>
                         </div>
                       </div>

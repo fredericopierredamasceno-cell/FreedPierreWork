@@ -16,6 +16,7 @@ export interface CMSProject {
   isCarousel?: boolean; // opção "Projeto em Carrossel" marcada no CMS (projetos antigos sem este campo continuam exibindo 1 imagem normalmente)
   embedPlatform?: "youtube" | "vimeo"; embedId?: string;
   isFixed?: boolean; createdAt: number;
+  hidden?: boolean; // ocultar da visualização pública sem apagar (admin ainda vê) — vale para vídeo, imagem, motion, design gráfico e qualquer categoria futura
 }
 export type DisplayProject = CMSProject;
 
