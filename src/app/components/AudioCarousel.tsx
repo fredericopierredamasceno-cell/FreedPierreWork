@@ -3,23 +3,35 @@ import type { CMSAudio } from "../lib/types";
 import { CATEGORY_COLORS } from "../lib/defaults";
 import { useCarouselScroll } from "../hooks/useCarouselScroll";
 import { useAudioPlayerState, useSyncPlaylist } from "../contexts/AudioPlayerContext";
-import { AudioCard } from "./AudioCard";
+import { FeaturedAudioCard } from "./FeaturedAudioCard";
+import { AudioCoverThumb } from "./AudioCoverThumb";
 import { MiniPlayer } from "./MiniPlayer";
+
 export function AudioCarousel({ audios, showAdmin, onDelete }: {
   audios: CMSAudio[]; showAdmin: boolean; onDelete: (id: string) => void;
 }) {
-  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll(audios.length);
-  const { activeId, isPlaying, toggle } = useAudioPlayerState();
+  const { activeId, isPlaying, activeAudio, toggle } = useAudioPlayerState();
   useSyncPlaylist(audios);
   const handleToggle = (id: string) => toggle(id, audios);
 
+  // Prioridade da capa principal: (1) música fixada manualmente no admin,
+  // (2) música em reprodução no momento, (3) mais recente, como fallback quando
+  // nada está tocando e nada está fixado.
+  const pinnedAudio = audios.find(a => a.isFeatured) ?? null;
+  const featuredAudio = pinnedAudio ?? activeAudio ?? audios[0] ?? null;
+
+  // Carrossel abaixo mostra apenas "as demais produções" — nunca repete a capa em destaque.
+  const carouselAudios = featuredAudio ? audios.filter(a => a.id !== featuredAudio.id) : audios;
+
+  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll(carouselAudios.length);
+
   if (audios.length === 0 && !showAdmin) return null;
 
-  // Largura fixa dos cards: 140px no mobile, 160px no desktop — nunca estoura
-  const CARD_W = 140;
+  // Miniaturas do carrossel: apenas a capa (sem título/artista) — a capa em
+  // destaque acima é ~30% maior (ver FeaturedAudioCard: 144px vs 96px aqui).
+  const THUMB_SIZE = 96;
 
   return (
-    /* max-w-full garante que o carrossel não expanda o pai sem quebrar o scroll */
     <div className="space-y-4 w-full" style={{ maxWidth: "100%" }}>
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -28,33 +40,42 @@ export function AudioCarousel({ audios, showAdmin, onDelete }: {
           <span className="font-black uppercase text-foreground text-lg" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Produções</span>
           <span className="font-mono text-[9px] text-muted-foreground">{audios.length} faixa{audios.length !== 1 ? "s" : ""}</span>
         </div>
-        <div className="flex gap-1">
-          {(["left", "right"] as const).map(dir => (
-            <button key={dir} onClick={() => scroll(dir)} disabled={dir === "left" ? !canLeft : !canRight}
-              className={`w-7 h-7 border flex items-center justify-center text-xs font-bold transition-all ${(dir === "left" ? canLeft : canRight) ? "border-border text-muted-foreground hover:border-primary hover:text-primary" : "border-border/30 text-muted-foreground/20 cursor-not-allowed"}`}>
-              {dir === "left" ? "‹" : "›"}
-            </button>
-          ))}
-        </div>
+        {carouselAudios.length > 0 && (
+          <div className="flex gap-1">
+            {(["left", "right"] as const).map(dir => (
+              <button key={dir} onClick={() => scroll(dir)} disabled={dir === "left" ? !canLeft : !canRight}
+                className={`w-7 h-7 border flex items-center justify-center text-xs font-bold transition-all ${(dir === "left" ? canLeft : canRight) ? "border-border text-muted-foreground hover:border-primary hover:text-primary" : "border-border/30 text-muted-foreground/20 cursor-not-allowed"}`}>
+                {dir === "left" ? "‹" : "›"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Scroll row — width fixo nos cards evita overflow horizontal na página */}
-      <div className="relative">
-        <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-        <div className={`absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity ${canRight ? "opacity-100" : "opacity-0"}`} />
-        <div
-          ref={scrollRef} onScroll={updateArrows} onWheel={onWheel}
-          className="flex gap-3 pb-2"
-          style={{ overflowX: "auto", width: "100%", maxWidth: "100%", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
-        >
-          {audios.map(a => (
-            <div key={a.id} data-card className="flex-shrink-0" style={{ scrollSnapAlign: "start", width: CARD_W }}>
-              <AudioCard audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={handleToggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} size="sm" />
-            </div>
-          ))}
-          <div className="flex-shrink-0 w-2" />
+      {/* Nível 1 — Produção em destaque */}
+      {featuredAudio && (
+        <FeaturedAudioCard audio={featuredAudio} playlist={audios} showAdmin={showAdmin} onDelete={showAdmin ? onDelete : undefined} />
+      )}
+
+      {/* Nível 2 — Carrossel horizontal apenas com as capas das demais produções */}
+      {carouselAudios.length > 0 && (
+        <div className="relative">
+          <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+          <div className={`absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none transition-opacity ${canRight ? "opacity-100" : "opacity-0"}`} />
+          <div
+            ref={scrollRef} onScroll={updateArrows} onWheel={onWheel}
+            className="flex gap-3 pb-2"
+            style={{ overflowX: "auto", width: "100%", maxWidth: "100%", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
+          >
+            {carouselAudios.map(a => (
+              <div key={a.id} data-card className="flex-shrink-0" style={{ scrollSnapAlign: "start" }}>
+                <AudioCoverThumb audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={handleToggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} size={THUMB_SIZE} />
+              </div>
+            ))}
+            <div className="flex-shrink-0 w-2" />
+          </div>
         </div>
-      </div>
+      )}
 
       <MiniPlayer />
 

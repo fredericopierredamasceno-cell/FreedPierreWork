@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import {
-  Settings, Plus, X, Pin, Trash2, Upload, Check, Youtube, Music, Eye, EyeOff,
+  Settings, Plus, X, Pin, Trash2, Upload, Check, Youtube, Music, Eye, EyeOff, Star,
   Github, Library, FolderOpen, FileText, Sparkles, Paintbrush, Info, ScrollText,
 } from "lucide-react";
 import type {
@@ -67,6 +67,12 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
 
   const toggleHideAudio = (id: string) => {
     setCms({ ...cms, audios: cms.audios.map(a => a.id === id ? { ...a, hidden: !a.hidden } : a) });
+  };
+
+  // Apenas uma música pode estar fixada como destaque por vez — marcar outra
+  // remove automaticamente a marcação anterior.
+  const toggleFeaturedAudio = (id: string) => {
+    setCms({ ...cms, audios: cms.audios.map(a => ({ ...a, isFeatured: a.id === id ? !a.isFeatured : false })) });
   };
 
   const saveAudio = async (updated: CMSAudio) => {
@@ -219,20 +225,22 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
                 {cms.audios.length === 0
                   ? <p className="font-mono text-[10px] text-muted-foreground tracking-widest">Nenhuma — upload via botão acima (aba Áudio)</p>
                   : cms.audios.map(a => (
-                    <div key={a.id} className={`border mb-1 ${a.hidden ? "border-border/40 opacity-50" : "border-border"}`}>
+                    <div key={a.id} className={`border mb-1 ${a.hidden ? "border-border/40 opacity-50" : a.isFeatured ? "border-primary/50" : "border-border"}`}>
                       <div className="flex items-center gap-2 p-2">
                         <div className="w-10 h-10 flex-shrink-0 overflow-hidden border border-border">
                           {a.coverUrl ? <img src={a.coverUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-muted flex items-center justify-center"><Music size={12} className="text-muted-foreground" /></div>}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{a.title}</p>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             {a.artist && <p className="font-mono text-[9px] text-muted-foreground">{a.artist}</p>}
                             {a.genre && <span className="font-mono text-[8px] px-1 bg-primary/10 text-primary">{a.genre}</span>}
+                            {a.isFeatured && <span className="font-mono text-[8px] px-1 bg-primary/20 text-primary uppercase">★ Destaque</span>}
                             {a.hidden && <span className="font-mono text-[8px] px-1 bg-red-500/20 text-red-400 uppercase">Oculto</span>}
                           </div>
                         </div>
                         <div className="flex gap-1 flex-shrink-0">
+                          <button onClick={() => toggleFeaturedAudio(a.id)} title={a.isFeatured ? "Remover destaque" : "Fixar como destaque"} className={`font-mono text-[9px] px-2 py-1 border ${a.isFeatured ? "border-primary text-primary" : "border-border text-muted-foreground hover:border-primary hover:text-primary"}`}><Star size={8} className={a.isFeatured ? "fill-current" : ""} /></button>
                           <button onClick={() => setEditingAudio(a)} title="Editar" className="font-mono text-[9px] px-2 py-1 border border-border text-muted-foreground hover:border-primary hover:text-primary">✏</button>
                           <button onClick={() => toggleHideAudio(a.id)} title={a.hidden ? "Mostrar" : "Ocultar"} className={`font-mono text-[9px] px-2 py-1 border ${a.hidden ? "border-green-500/40 text-green-400" : "border-yellow-500/40 text-yellow-400"}`}>{a.hidden ? <Eye size={8} /> : <EyeOff size={8} />}</button>
                           <button onClick={() => delAudio(a.id)} title="Deletar permanentemente" className="font-mono text-[9px] px-2 py-1 border border-red-500/40 text-red-400"><Trash2 size={8} /></button>

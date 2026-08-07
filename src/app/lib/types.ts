@@ -23,6 +23,7 @@ export interface CMSAudio {
   genre?: string; // gênero musical ex: "Trap", "Eletrônico", "Gospel"
   url: string; coverUrl?: string; createdAt: number;
   hidden?: boolean; // ocultar da visualização pública (admin ainda vê)
+  isFeatured?: boolean; // fixado como capa principal da seção "Produções" (apenas uma por vez)
 }
 
 export interface CMSServiceContent {
