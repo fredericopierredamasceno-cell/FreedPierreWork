@@ -4,6 +4,7 @@ export function useCarouselScroll(itemsSignature?: number) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   const updateArrows = useCallback(() => {
     const el = scrollRef.current; if (!el) return;
@@ -42,5 +43,32 @@ export function useCarouselScroll(itemsSignature?: number) {
     el.scrollBy({ left: e.deltaY, behavior: "auto" });
   };
 
-  return { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel };
+  // Arrastar com o MOUSE (desktop). Touch/caneta ficam de fora de propósito —
+  // o scroll nativo por swipe já cuida deles com inércia própria do SO, e
+  // reimplementar via JS aqui só atrapalharia (perderia a desaceleração nativa).
+  // Não usamos setPointerCapture no container: assim os cliques nas miniaturas
+  // (que têm sua própria detecção de tap por deslocamento) continuam recebendo
+  // os eventos de pointer normalmente, sem retargeting.
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType !== "mouse") return;
+    const el = scrollRef.current; if (!el) return;
+    const startX = e.clientX;
+    const startScrollLeft = el.scrollLeft;
+    let moved = false;
+
+    const handleMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      if (Math.abs(dx) > 3) { moved = true; setDragging(true); }
+      if (moved) el.scrollLeft = startScrollLeft - dx;
+    };
+    const handleUp = () => {
+      setDragging(false);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+  };
+
+  return { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel, onPointerDown, dragging };
 }

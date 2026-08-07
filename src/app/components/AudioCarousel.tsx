@@ -27,7 +27,7 @@ export function AudioCarousel({ audios, showAdmin, onDelete }: {
   // layoutId, ver FeaturedAudioCard / AudioCoverThumb).
   const carouselAudios = featuredAudio ? audios.filter(a => a.id !== featuredAudio.id) : audios;
 
-  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll(carouselAudios.length);
+  const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel, onPointerDown, dragging } = useCarouselScroll(carouselAudios.length);
 
   if (audios.length === 0 && !showAdmin) return null;
 
@@ -55,24 +55,29 @@ export function AudioCarousel({ audios, showAdmin, onDelete }: {
       {/*
         Vitrine — a capa em destaque fica sobreposta (z-index) à esquerda, e o
         carrossel de capas atravessa toda a largura passando visualmente por
-        trás dela (o carrossel começa em x:0, igual à capa; como a capa é
-        opaca e fica por cima, ela simplesmente encobre o início do carrossel
-        — não existe um "início ao lado", o carrossel nasce escondido atrás).
-        `--cell` define o tamanho (quadrado) da capa em destaque; a miniatura
-        do carrossel usa sempre --cell / 1.3, garantindo os ~30% de diferença
-        em qualquer largura de tela.
+        trás dela. Um espaçador invisível do tamanho exato da capa (--cell)
+        abre a fila ANTES da primeira miniatura, então nenhuma capa nasce
+        "de fábrica" já encoberta e inacessível — a sobreposição só acontece
+        de forma dinâmica, conforme o usuário rola (e é sempre reversível
+        rolando de volta). `--cell` define o tamanho (quadrado) da capa em
+        destaque; a miniatura do carrossel usa sempre --cell / 1.3, garantindo
+        os ~30% de diferença em qualquer largura de tela.
       */}
       {(featuredAudio || carouselAudios.length > 0) && (
         <LayoutGroup id="audio-cover">
-          <div className="relative w-full [--cell:min(84vw,272px)] md:[--cell:168px] lg:[--cell:190px] h-[var(--cell)]">
+          <div className="relative w-full [--cell:min(70vw,224px)] md:[--cell:140px] lg:[--cell:156px] h-[var(--cell)]">
             {/* Nível 2 — carrossel horizontal, atrás (z-0), somente capas quadradas */}
             {carouselAudios.length > 0 && (
               <div className="absolute inset-0 z-0">
                 <div
-                  ref={scrollRef} onScroll={updateArrows} onWheel={onWheel}
-                  className="h-full flex items-center gap-3 md:gap-3.5"
-                  style={{ overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
+                  ref={scrollRef} onScroll={updateArrows} onWheel={onWheel} onPointerDown={onPointerDown}
+                  onDragStart={e => e.preventDefault()}
+                  className={`h-full flex items-center gap-3 md:gap-3.5 select-none ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+                  style={{ overflowX: "auto", scrollSnapType: dragging ? "none" : "x proximity", overscrollBehaviorX: "contain", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", msOverflowStyle: "none", touchAction: "pan-x" }}
                 >
+                  {/* Espaçador — reserva o espaço exatamente coberto pela capa em destaque,
+                      garantindo que a primeira miniatura nasça visível, fora da sobreposição. */}
+                  <div className="flex-shrink-0" style={{ width: "var(--cell)", scrollSnapAlign: "none" }} aria-hidden="true" />
                   {carouselAudios.map(a => (
                     <div key={a.id} data-card className="relative flex-shrink-0 w-[calc(var(--cell)/1.3)] h-[calc(var(--cell)/1.3)]" style={{ scrollSnapAlign: "start" }}>
                       <AudioCoverThumb audio={a} isActive={activeId === a.id} isPlaying={activeId === a.id && isPlaying} onToggle={handleToggle} onDelete={showAdmin ? onDelete : undefined} showAdmin={showAdmin} />
