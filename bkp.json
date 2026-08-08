@@ -105,7 +105,16 @@
       "category": "Design Gráfico",
       "mediaType": "image",
       "mediaUrl": "/uploads/images/1786110002049-Post_para_Instagram_Ewz-01.jpg",
-      "createdAt": 1786110007524
+      "createdAt": 1786110007524,
+      "images": [
+        {
+          "id": "img-1786154272645-dwu83b",
+          "url": "/uploads/images/1786110002049-Post_para_Instagram_Ewz-01.jpg",
+          "order": 0,
+          "isMain": true,
+          "uploadedAt": 1786110007524
+        }
+      ]
     },
     {
       "id": "proj-1786031156532",
