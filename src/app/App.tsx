@@ -74,14 +74,6 @@ export function PortfolioApp() {
 
   const advantages = cms.advantages.map((a, i) => ({ num: `0${i + 1}`, title: a.title, body: a.body }));
 
-  // Fonte única do WhatsApp — lê do CMS (editável no admin) em vez de repetir
-  // o número em cada botão. CONTACT_LINKS continua com email/LinkedIn/Instagram
-  // fixos por enquanto; o item de WhatsApp é sobrescrito aqui com o valor ao vivo.
-  const whatsappHref = `https://wa.me/${content.contactWhatsappNumber}`;
-  const contactLinks = CONTACT_LINKS.map(c =>
-    c.label === "WhatsApp" ? { ...c, value: content.contactWhatsappDisplay, href: whatsappHref } : c
-  );
-
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", fn, { passive: true }); return () => window.removeEventListener("scroll", fn);
@@ -192,7 +184,7 @@ export function PortfolioApp() {
   const openNewRelease = () => { setEditingRelease(null); setReleaseFormOpen(true); };
   const openEditRelease = (r: CMSRelease) => { setEditingRelease(r); setReleaseFormOpen(true); };
 
-  const navLinks = [{ label: content.sectionLabelServicos, href: "#servicos" }, { label: content.navLinkTrabalhos, href: "#trabalhos" }, { label: content.sectionLabelDiferenciais, href: "#diferenciais" }, { label: content.navLinkLancamentos, href: "#plataformas" }, { label: content.sectionLabelContato, href: "#contato" }];
+  const navLinks = [{ label: "Serviços", href: "#servicos" }, { label: "Trabalhos", href: "#trabalhos" }, { label: "Por que eu?", href: "#diferenciais" }, { label: "Lançamentos", href: "#plataformas" }, { label: "Contato", href: "#contato" }];
 
   // O Hero só monta DEPOIS do fetch assíncrono do CMS (branch cms-data),
   // ou seja, o <video autoPlay> nunca está presente no primeiro paint da
@@ -273,19 +265,13 @@ export function PortfolioApp() {
 
       <PublishProgressModal open={publishOpen} steps={publishSteps} onClose={() => setPublishOpen(false)} />
       <AdminLoginModal open={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setAdminMode(true); toast.success("Admin autenticado."); addLog("success", "Admin autenticado."); }} />
-      <GalleryModal service={galleryService} allProjects={allProjects} audios={adminMode ? cms.audios : cms.audios.filter(a => !a.hidden)} initialItem={galleryInitialItem} onClose={() => { setGalleryService(null); setGalleryInitialItem(null); }} showAdmin={adminMode} onDelete={handleDeleteProject} onDeleteAudio={handleDeleteAudio} onTogglePin={handleTogglePin} pinned={pinned} designCategories={cms.designCategories} texts={{
-        whatsappHref,
-        aboutLabel: content.galleryAboutLabel, allLabel: content.galleryAllLabel, otherLabel: content.galleryOtherLabel,
-        emptyCategory: content.galleryEmptyCategory, emptyGeneric: content.galleryEmptyGeneric,
-        ctaOrcamento: content.serviceCtaOrcamento, ctaProducao: content.galleryCtaProducao,
-        audioEmpty: content.audioEmpty, audioEmptyHint: content.audioEmptyHint,
-      }} />
+      <GalleryModal service={galleryService} allProjects={allProjects} audios={adminMode ? cms.audios : cms.audios.filter(a => !a.hidden)} initialItem={galleryInitialItem} onClose={() => { setGalleryService(null); setGalleryInitialItem(null); }} showAdmin={adminMode} onDelete={handleDeleteProject} onDeleteAudio={handleDeleteAudio} onTogglePin={handleTogglePin} pinned={pinned} designCategories={cms.designCategories} />
       <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSave={handleAddProject} onSaveAudio={handleAddAudio} uploadFile={uploadFile} ghConfigured={ghOk} designCategories={cms.designCategories} />
       <ReleaseFormModal release={editingRelease} open={releaseFormOpen} onClose={() => { setReleaseFormOpen(false); setEditingRelease(null); }} onSave={handleSaveRelease} onToggleHidden={handleToggleHideRelease} uploadFile={uploadFile} ghConfigured={ghOk} />
       <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} onOpenReleaseForm={(r) => { setAdminOpen(false); if (r) openEditRelease(r); else openNewRelease(); }} onDeleteRelease={handleDeleteRelease} onToggleHideRelease={handleToggleHideRelease} />
 
       {/* Floating "Disponível" badge — fixed bottom-right, visible everywhere */}
-      <a href={whatsappHref} target="_blank" rel="noopener noreferrer"
+      <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer"
         className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-background border border-primary/60 px-4 py-2 shadow-lg hover:border-primary transition-colors group"
         style={{ backdropFilter: "blur(8px)" }}
       >
@@ -315,7 +301,7 @@ export function PortfolioApp() {
           <div className="hidden md:flex items-center gap-6">
             {navLinks.map(l => <button key={l.href} onClick={() => scrollTo(l.href)} className="font-medium text-xs tracking-[0.2em] uppercase text-muted-foreground hover:text-foreground transition-colors">{l.label}</button>)}
             {!adminMode
-              ? <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-primary text-background px-5 py-2.5 font-bold text-xs tracking-widest uppercase hover:bg-primary/85 transition-colors"><MessageCircle size={13} />{content.navCtaOrcamento}</a>
+              ? <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-primary text-background px-5 py-2.5 font-bold text-xs tracking-widest uppercase hover:bg-primary/85 transition-colors"><MessageCircle size={13} />Orçamento</a>
               : <button onClick={() => setAdminOpen(true)} className="font-mono text-[10px] text-primary border border-primary/30 px-3 py-1.5 flex items-center gap-1.5 hover:bg-primary/10 transition-colors"><Settings size={11} />Admin</button>}
           </div>
           <button className="md:hidden text-foreground p-1" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={22} /> : <Menu size={22} />}</button>
@@ -323,7 +309,7 @@ export function PortfolioApp() {
         <div className={`md:hidden overflow-hidden transition-[max-height] duration-300 ${menuOpen ? "max-h-80" : "max-h-0"} bg-card border-b border-border`}>
           <div className="px-5 py-5 flex flex-col gap-5">
             {navLinks.map(l => <button key={l.href} onClick={() => scrollTo(l.href)} className="text-left font-medium text-xs tracking-[0.2em] uppercase text-muted-foreground">{l.label}</button>)}
-            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-primary text-background px-5 py-3 font-bold text-xs tracking-widest uppercase w-fit"><MessageCircle size={13} />{content.navCtaOrcamento}</a>
+            <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-primary text-background px-5 py-3 font-bold text-xs tracking-widest uppercase w-fit"><MessageCircle size={13} />Orçamento</a>
             {adminMode && <button onClick={() => { setMenuOpen(false); setAdminOpen(true); }} className="flex items-center gap-2 text-primary font-mono text-[10px] tracking-widest uppercase"><Settings size={11} />Admin</button>}
           </div>
         </div>
@@ -383,8 +369,8 @@ export function PortfolioApp() {
           </div>
           <p className="text-muted-foreground font-light text-sm md:text-lg max-w-sm md:max-w-xl mb-7 md:mb-10 leading-relaxed">{content.heroSubtitle}</p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <button onClick={() => scrollTo("#servicos")} className="flex items-center justify-center gap-2 bg-primary text-background px-7 py-3.5 font-bold text-sm tracking-widest uppercase hover:bg-primary/85 transition-colors">{content.navCtaServicos}</button>
-            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 border border-foreground/20 text-foreground px-7 py-3.5 font-semibold text-sm tracking-widest uppercase hover:border-foreground/50 transition-colors"><MessageCircle size={15} />{content.heroCtaWhatsapp}</a>
+            <button onClick={() => scrollTo("#servicos")} className="flex items-center justify-center gap-2 bg-primary text-background px-7 py-3.5 font-bold text-sm tracking-widest uppercase hover:bg-primary/85 transition-colors">Ver serviços</button>
+            <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 border border-foreground/20 text-foreground px-7 py-3.5 font-semibold text-sm tracking-widest uppercase hover:border-foreground/50 transition-colors"><MessageCircle size={15} />WhatsApp</a>
           </div>
         </div>
 
@@ -404,7 +390,7 @@ export function PortfolioApp() {
       {/* ── SERVIÇOS ── */}
       <section id="servicos" className="py-16 md:py-28">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
-          <FadeIn><SectionLabel>{content.sectionLabelServicos}</SectionLabel></FadeIn>
+          <FadeIn><SectionLabel>{cms.content.servicesSectionLabel}</SectionLabel></FadeIn>
           <FadeIn delay={60}>
             <h2 className="text-4xl md:text-7xl font-black uppercase text-foreground leading-none mb-10 md:mb-16" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
               {content.servicesHeading1}<br /><span className="text-primary">{content.servicesHeading2}</span>
@@ -428,8 +414,8 @@ export function PortfolioApp() {
               <p className="text-muted-foreground text-base leading-relaxed font-light mb-8">{services[activeService]?.description}</p>
               <div className="flex flex-wrap gap-2 mb-8">{services[activeService]?.tags.map(t => <span key={t} className="font-mono text-[10px] tracking-widest uppercase border border-border text-muted-foreground px-3 py-1.5 hover:border-primary hover:text-primary transition-colors">{t}</span>)}</div>
               <div className="flex flex-wrap items-center gap-6">
-                <button onClick={() => { setGalleryService(services[activeService]); setGalleryInitialItem(null); }} className="inline-flex items-center gap-2 bg-primary text-background px-6 py-2.5 font-bold text-xs tracking-widest uppercase hover:bg-primary/85 transition-colors">{content.serviceCtaGaleria} <Film size={13} /></button>
-                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary font-semibold text-sm tracking-wider uppercase">{content.serviceCtaOrcamento} <ArrowUpRight size={15} /></a>
+                <button onClick={() => { setGalleryService(services[activeService]); setGalleryInitialItem(null); }} className="inline-flex items-center gap-2 bg-primary text-background px-6 py-2.5 font-bold text-xs tracking-widest uppercase hover:bg-primary/85 transition-colors">Ver galeria <Film size={13} /></button>
+                <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary font-semibold text-sm tracking-wider uppercase">Solicitar orçamento <ArrowUpRight size={15} /></a>
               </div>
             </div>
           </div>
@@ -454,8 +440,8 @@ export function PortfolioApp() {
                         <p className="text-muted-foreground text-sm leading-relaxed font-light mb-4">{s.description}</p>
                         <div className="flex flex-wrap gap-1.5 mb-4">{s.tags.map(t => <span key={t} className="font-mono text-[10px] tracking-widest uppercase border border-border text-muted-foreground px-2.5 py-1">{t}</span>)}</div>
                         <div className="flex items-center gap-4">
-                          <button onClick={() => { setGalleryService(s); setGalleryInitialItem(null); }} className="flex items-center gap-2 bg-primary text-background px-5 py-2.5 font-bold text-xs tracking-widest uppercase">{content.serviceCtaGaleria} <Film size={12} /></button>
-                          <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-primary text-xs font-semibold tracking-wider uppercase">{content.serviceCtaOrcamento} <ArrowUpRight size={12} /></a>
+                          <button onClick={() => { setGalleryService(s); setGalleryInitialItem(null); }} className="flex items-center gap-2 bg-primary text-background px-5 py-2.5 font-bold text-xs tracking-widest uppercase">Ver galeria <Film size={12} /></button>
+                          <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-primary text-xs font-semibold tracking-wider uppercase">Orçamento <ArrowUpRight size={12} /></a>
                         </div>
                       </div>
                     </div>
@@ -470,9 +456,9 @@ export function PortfolioApp() {
       {/* ── TRABALHOS ── */}
       <section id="trabalhos" className="py-16 md:py-24 bg-background overflow-hidden">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
-          <FadeIn><SectionLabel>{content.sectionLabelPortfolio}</SectionLabel></FadeIn>
+          <FadeIn><SectionLabel>{cms.content.workSectionLabel}</SectionLabel></FadeIn>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10 md:mb-12">
-            <FadeIn delay={60}><h2 className="text-4xl md:text-7xl font-black uppercase text-foreground leading-none" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{content.portfolioTitleLine1}<br /><span className="text-primary">{content.portfolioTitleLine2}</span></h2></FadeIn>
+            <FadeIn delay={60}><h2 className="text-4xl md:text-7xl font-black uppercase text-foreground leading-none" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Portfólio<br /><span className="text-primary">por área</span></h2></FadeIn>
             {adminMode && <FadeIn delay={100}><button onClick={() => setUploadOpen(true)} className="flex items-center gap-2 px-4 py-2.5 font-bold text-xs tracking-widest uppercase bg-primary text-background self-start sm:self-auto"><Plus size={13} />Adicionar</button></FadeIn>}
           </div>
 
@@ -481,7 +467,7 @@ export function PortfolioApp() {
               <div className="mb-10 md:mb-14">
                 <div className="flex items-center gap-2.5 mb-4">
                   <span className="w-1.5 h-5 flex-shrink-0 rounded-sm bg-primary" />
-                  <span className="font-black uppercase text-foreground text-lg md:text-xl leading-none" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{content.portfolioFeaturedBadge}</span>
+                  <span className="font-black uppercase text-foreground text-lg md:text-xl leading-none" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Em Destaque</span>
                   <span className="font-mono text-[9px] text-muted-foreground tracking-widest">{featuredProjects.length}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-border">
@@ -505,8 +491,8 @@ export function PortfolioApp() {
           {allProjects.length === 0 && (
             <div className="border border-dashed border-border py-20 flex flex-col items-center gap-4">
               <Film size={28} className="text-muted-foreground" />
-              <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase text-center">{content.portfolioEmptyState}</p>
-              {adminMode && <button onClick={() => setUploadOpen(true)} className="flex items-center gap-2 bg-primary text-background px-5 py-2.5 font-bold text-xs tracking-widest uppercase mt-2"><Plus size={12} />{content.portfolioEmptyStateCta}</button>}
+              <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase text-center">Nenhum projeto ainda</p>
+              {adminMode && <button onClick={() => setUploadOpen(true)} className="flex items-center gap-2 bg-primary text-background px-5 py-2.5 font-bold text-xs tracking-widest uppercase mt-2"><Plus size={12} />Primeiro projeto</button>}
             </div>
           )}
         </div>
@@ -515,7 +501,7 @@ export function PortfolioApp() {
       {/* ── DIFERENCIAIS ── */}
       <section id="diferenciais" className="py-16 md:py-28 overflow-hidden">
         <div className="max-w-6xl mx-auto px-5 md:px-6 overflow-hidden">
-          <FadeIn><SectionLabel>{content.sectionLabelDiferenciais}</SectionLabel></FadeIn>
+          <FadeIn><SectionLabel>{cms.content.whyMeSectionLabel}</SectionLabel></FadeIn>
               <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-start w-full" style={{ maxWidth: "100%" }}>
             <FadeIn delay={60} className="min-w-0 w-full">
               <div className="min-w-0 w-full" style={{ maxWidth: "100%" }}>
@@ -560,12 +546,6 @@ export function PortfolioApp() {
         onEdit={openEditRelease}
         onToggleHide={handleToggleHideRelease}
         onDelete={handleDeleteRelease}
-        texts={{
-          subheading: content.releasesSubheading,
-          titleLine1: content.releasesTitleLine1, titleLine2: content.releasesTitleLine2,
-          ctaNew: content.releasesCtaNew, ctaFirst: content.releasesCtaFirst,
-          empty: content.releasesEmpty,
-        }}
       />
 
       {/* ── STATS ── */}
@@ -585,20 +565,20 @@ export function PortfolioApp() {
       {/* ── CONTATO ── */}
       <section id="contato" className="py-16 md:py-28">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
-          <FadeIn><SectionLabel>{content.sectionLabelContato}</SectionLabel></FadeIn>
+          <FadeIn><SectionLabel>{cms.content.contactSectionLabel}</SectionLabel></FadeIn>
           <div className="grid md:grid-cols-2 gap-10 md:gap-16">
             <FadeIn delay={60}>
               <div>
                 <h2 className="text-4xl md:text-7xl font-black uppercase text-foreground leading-none mb-5" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{content.contactHeading}</h2>
                 <p className="text-muted-foreground font-light text-sm md:text-base leading-relaxed mb-7">{content.contactSubtext}</p>
-                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 bg-primary text-background px-7 py-4 font-black tracking-widest uppercase hover:bg-primary/85 transition-colors w-full sm:w-auto justify-center" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "1rem" }}>
-                  <MessageCircle size={17} />{content.contactWhatsappCta}
+                <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 bg-primary text-background px-7 py-4 font-black tracking-widest uppercase hover:bg-primary/85 transition-colors w-full sm:w-auto justify-center" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: "1rem" }}>
+                  <MessageCircle size={17} />Falar no WhatsApp
                 </a>
               </div>
             </FadeIn>
             <FadeIn delay={140}>
               <div className="border border-border divide-y divide-border">
-                {contactLinks.map(c => (
+                {CONTACT_LINKS.map(c => (
                   <a key={c.label} href={c.href} target={c.href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="flex items-center gap-4 md:gap-5 px-5 md:px-7 py-5 hover:bg-muted/40 transition-colors group">
                     <span className="text-primary flex-shrink-0">{c.icon}</span>
                     <div className="flex-1 min-w-0">
@@ -623,7 +603,7 @@ export function PortfolioApp() {
               {content.footerCopy}{adminMode && <span className="block text-primary mt-0.5">ADMIN ATIVO</span>}
             </p>
             <div className="flex items-center gap-5">
-              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle size={18} /></a>
+              <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle size={18} /></a>
               <a href="mailto:fredericopierredamasceno@gmail.com" className="text-muted-foreground hover:text-primary transition-colors"><Mail size={18} /></a>
               <a href="https://www.linkedin.com/in/fredericopierre" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={18} /></a>
               <a href="https://www.instagram.com/freedpierre/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-muted-foreground hover:text-primary transition-colors"><Instagram size={18} /></a>
@@ -635,7 +615,7 @@ export function PortfolioApp() {
               {content.footerCopy}{adminMode && <span className="block text-primary mt-0.5">ADMIN ATIVO</span>}
             </p>
             <div className="flex justify-end items-center gap-4">
-              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle size={16} /></a>
+              <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><MessageCircle size={16} /></a>
               <a href="mailto:fredericopierredamasceno@gmail.com" className="text-muted-foreground hover:text-primary transition-colors"><Mail size={16} /></a>
               <a href="https://www.linkedin.com/in/fredericopierre" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="text-muted-foreground hover:text-primary transition-colors"><Linkedin size={16} /></a>
               <a href="https://www.instagram.com/freedpierre/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-muted-foreground hover:text-primary transition-colors"><Instagram size={16} /></a>

@@ -32,7 +32,7 @@ export interface CMSProject {
   /** @deprecated não é mais gravado — o carrossel é inferido de `images.length > 1`. Mantido só para ler dados antigos. */
   isCarousel?: boolean;
   embedPlatform?: "youtube" | "vimeo"; embedId?: string;
-  isFixed?: boolean; createdAt: number;
+  isFixed?: boolean; createdAt: number; updatedAt?: number;
   hidden?: boolean; // ocultar da visualização pública sem apagar (admin ainda vê) — vale para vídeo, imagem, motion, design gráfico e qualquer categoria futura
 }
 export type DisplayProject = CMSProject;
@@ -40,7 +40,7 @@ export type DisplayProject = CMSProject;
 export interface CMSAudio {
   id: string; title: string; artist?: string;
   genre?: string; // gênero musical ex: "Trap", "Eletrônico", "Gospel"
-  url: string; coverUrl?: string; createdAt: number;
+  url: string; coverUrl?: string; createdAt: number; updatedAt?: number;
   hidden?: boolean; // ocultar da visualização pública (admin ainda vê)
   isFeatured?: boolean; // fixado como capa principal da seção "Produções" (apenas uma por vez)
 }
@@ -79,4 +79,4 @@ export interface CMSData {
 export type SaveStatus = "idle" | "saving" | "success" | "error";
 export type UploadMode = "file" | "youtube" | "vimeo";
 export type UploadMediaType = "video" | "image" | "audio";
-export type AdminTab = "github" | "midias" | "uploads" | "textos" | "servicos" | "cores" | "info" | "logs";
+export type AdminTab = "dashboard" | "github" | "midias" | "uploads" | "textos" | "servicos" | "cores" | "info" | "logs";
