@@ -6,8 +6,8 @@ import {
   CMS_BRANCH, CMS_FILE, PUBLIC_CFG_PATH,
   loadGHConfig, storeGHConfig, clearGHConfig, clearGHTokenOnly, loadPublicConfig,
   GH_HEADERS, ghEnsureCMSBranch, ghWriteCMSFile, ghCommitCMS, ghFetchCMS,
+  ghUploadBinary, ghDeleteFile,
 } from "../lib/github";
-import { getActiveStorageProvider } from "../lib/storage";
 export function useCMS() {
   const [ghConfig, setGhConfigState] = useState<GitHubConfig | null>(loadGHConfig);
   const [cms, setCms] = useState<CMSData>(makeCMSData);
@@ -137,11 +137,11 @@ export function useCMS() {
     file: File, type: "image" | "video" | "audio",
     onProgress: (p: UploadProgress) => void,
   ): Promise<string | null> => {
-    const provider = getActiveStorageProvider(ghConfig);
-    if (!provider.isConfigured()) { toast.error("Configure o GitHub + token antes de fazer uploads."); return null; }
+    if (!ghConfig?.token) { toast.error("Configure o GitHub + token antes de fazer uploads."); return null; }
+    const folder = type === "image" ? "public/uploads/images" : type === "video" ? "public/uploads/videos" : "public/uploads/audio";
     addLog("info", `Upload: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
     try {
-      const url = await provider.upload(file, type, onProgress);
+      const url = await ghUploadBinary(ghConfig, folder, file, onProgress);
       addLog("success", `Upload OK → ${url}`);
       toast.success(`Upload concluído: ${file.name}`);
       return url;
@@ -156,9 +156,8 @@ export function useCMS() {
   }, [ghConfig, addLog]);
 
   const deleteFile = useCallback(async (publicPath: string): Promise<void> => {
-    const provider = getActiveStorageProvider(ghConfig);
-    if (!provider.isConfigured()) return;
-    try { await provider.remove(publicPath); addLog("info", `Removido: ${publicPath}`); } catch {}
+    if (!ghConfig?.token || !publicPath.startsWith("/uploads/")) return;
+    try { await ghDeleteFile(ghConfig, publicPath); addLog("info", `Removido: ${publicPath}`); } catch {}
   }, [ghConfig, addLog]);
 
   const syncFromGitHub = useCallback(async (): Promise<boolean> => {

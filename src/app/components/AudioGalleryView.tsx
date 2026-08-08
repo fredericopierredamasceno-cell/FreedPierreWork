@@ -4,7 +4,7 @@ import type { CMSAudio } from "../lib/types";
 import { useAudioPlayerState, useSyncPlaylist } from "../contexts/AudioPlayerContext";
 import { AudioCard } from "./AudioCard";
 import { MiniPlayer } from "./MiniPlayer";
-export function AudioGalleryView({ audios, showAdmin, onDeleteAudio, texts }: { audios: CMSAudio[]; showAdmin: boolean; onDeleteAudio: (id: string) => void; texts: { empty: string; emptyHint: string } }) {
+export function AudioGalleryView({ audios, showAdmin, onDeleteAudio }: { audios: CMSAudio[]; showAdmin: boolean; onDeleteAudio: (id: string) => void }) {
   const { activeId, isPlaying, toggle } = useAudioPlayerState();
   useSyncPlaylist(audios);
   const handleToggle = (id: string) => toggle(id, audios);
@@ -17,8 +17,8 @@ export function AudioGalleryView({ audios, showAdmin, onDeleteAudio, texts }: { 
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4 px-6">
         <div className="w-12 h-12 border border-border flex items-center justify-center text-muted-foreground"><Music size={24} /></div>
-        <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase text-center">{texts.empty}</p>
-        {showAdmin && <p className="font-mono text-[10px] text-muted-foreground/50 text-center">{texts.emptyHint}</p>}
+        <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase text-center">Nenhuma produção cadastrada ainda</p>
+        {showAdmin && <p className="font-mono text-[10px] text-muted-foreground/50 text-center">Faça upload de áudios no painel admin</p>}
       </div>
     );
   }

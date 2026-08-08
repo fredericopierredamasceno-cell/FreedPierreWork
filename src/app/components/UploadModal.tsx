@@ -89,14 +89,14 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
       if (!url) { setErrMsg("Falha no upload."); setBusy(false); return; }
       let coverUrl: string | undefined;
       if (audioCoverFile) { const cu = await uploadFile(audioCoverFile, "image", setProgress2); if (cu) coverUrl = cu; }
-      await onSaveAudio({ id: `audio-${Date.now()}`, title: title.trim(), artist: artist.trim() || undefined, genre: genre.trim() || undefined, url, coverUrl, createdAt: Date.now(), updatedAt: Date.now() });
+      await onSaveAudio({ id: `audio-${Date.now()}`, title: title.trim(), artist: artist.trim() || undefined, genre: genre.trim() || undefined, url, coverUrl, createdAt: Date.now() });
       setDone(true); setTimeout(() => { reset(); onClose(); }, 1000);
       return;
     }
 
     const embedReady = tab === "video" && (mode === "youtube" || mode === "vimeo") && !!parsedVideo;
     if (embedReady) {
-      await onSave({ id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat, subcategory: cat === DESIGN_SERVICE_TITLE && subcat ? subcat : undefined, mediaType: "embed", mediaUrl: parsedVideo!.embed, thumbUrl: parsedVideo!.thumb || undefined, embedPlatform: parsedVideo!.platform, embedId: parsedVideo!.id, createdAt: Date.now(), updatedAt: Date.now() });
+      await onSave({ id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat, subcategory: cat === DESIGN_SERVICE_TITLE && subcat ? subcat : undefined, mediaType: "embed", mediaUrl: parsedVideo!.embed, thumbUrl: parsedVideo!.thumb || undefined, embedPlatform: parsedVideo!.platform, embedId: parsedVideo!.id, createdAt: Date.now() });
       setDone(true); setTimeout(() => { reset(); onClose(); }, 1000);
       return;
     }
@@ -118,7 +118,7 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
         id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat,
         subcategory: cat === DESIGN_SERVICE_TITLE && subcat ? subcat : undefined,
         mediaType: "image", mediaUrl: main.url,
-        images, thumbUrl, createdAt: Date.now(), updatedAt: Date.now(),
+        images, thumbUrl, createdAt: Date.now(),
       });
       setDone(true); setTimeout(() => { reset(); onClose(); }, 1000);
       return;
@@ -136,7 +136,7 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
       id: `proj-${Date.now()}`, title: title.trim(), description: desc.trim(), category: cat,
       subcategory: cat === DESIGN_SERVICE_TITLE && subcat ? subcat : undefined,
       mediaType: "video", mediaUrl,
-      thumbUrl, createdAt: Date.now(), updatedAt: Date.now(),
+      thumbUrl, createdAt: Date.now(),
     });
     setDone(true); setTimeout(() => { reset(); onClose(); }, 1000);
   };
