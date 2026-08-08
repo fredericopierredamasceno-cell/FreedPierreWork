@@ -1,47 +1,75 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type React from "react";
 import { ChevronLeft, ChevronRight, ZoomIn, X } from "lucide-react";
+import type { GalleryImage } from "../lib/types";
 
-export function ImageCarousel({ images, title, fullscreen }: { images: string[]; title: string; fullscreen?: boolean }) {
+export function ImageCarousel({ images, title, fullscreen }: { images: GalleryImage[]; title: string; fullscreen?: boolean }) {
   const [idx, setIdx] = useState(0);
   const [zoom, setZoom] = useState(false);
+  const [dragOffsetPct, setDragOffsetPct] = useState(0); // acompanha o dedo/mouse durante o arraste, estilo Instagram
+  const [dragging, setDragging] = useState(false);
   const startX = useRef<number | null>(null);
+  const widthRef = useRef(1);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const clamp = (i: number) => (i + images.length) % images.length;
   const prev = () => setIdx(i => clamp(i - 1));
   const next = () => setIdx(i => clamp(i + 1));
 
+  // Navegação por teclado (setas ← →) quando o carrossel está em tela cheia
+  useEffect(() => {
+    if (!fullscreen) return;
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") prev();
+      else if (e.key === "ArrowRight") next();
+    };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullscreen, images.length]);
+
   const handlers = {
-    // setPointerCapture garante que o pointerup chegue a este elemento mesmo se
-    // o dedo/cursor sair da área do carrossel durante o swipe (comum em mobile).
-    onPointerDown: (e: React.PointerEvent) => { startX.current = e.clientX; e.currentTarget.setPointerCapture(e.pointerId); },
+    onPointerDown: (e: React.PointerEvent) => {
+      startX.current = e.clientX;
+      widthRef.current = containerRef.current?.clientWidth || 1;
+      setDragging(true);
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (startX.current === null) return;
+      const dx = e.clientX - startX.current;
+      setDragOffsetPct((dx / widthRef.current) * 100);
+    },
     onPointerUp: (e: React.PointerEvent) => {
       if (startX.current === null) return;
       const dx = e.clientX - startX.current;
-      startX.current = null;
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
-      if (Math.abs(dx) > 40) { dx < 0 ? next() : prev(); }
+      startX.current = null; setDragOffsetPct(0); setDragging(false);
+      if (Math.abs(dx) > widthRef.current * 0.15) { dx < 0 ? next() : prev(); }
     },
-    onPointerCancel: (e: React.PointerEvent) => {
-      startX.current = null;
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
-    },
+    onPointerCancel: () => { startX.current = null; setDragOffsetPct(0); setDragging(false); },
   };
 
   if (images.length === 0) return null;
 
   return (
-    <div className="relative w-full h-full select-none overflow-hidden" {...handlers} style={{ touchAction: "pan-y" }}>
-      {/* Trilho deslizante — animação suave em vez de troca abrupta de imagem */}
+    <div
+      ref={containerRef}
+      className="relative w-full h-full select-none overflow-hidden"
+      tabIndex={0}
+      onKeyDown={e => { if (e.key === "ArrowLeft") prev(); else if (e.key === "ArrowRight") next(); }}
+      {...handlers}
+      style={{ touchAction: "pan-y", cursor: images.length > 1 ? "grab" : "default" }}
+    >
+      {/* Trilho deslizante — segue o arraste em tempo real (estilo Instagram) e anima suavemente ao soltar */}
       <div
-        className="flex w-full h-full transition-transform duration-500 ease-out"
-        style={{ transform: `translateX(-${idx * 100}%)` }}
+        className={`flex w-full h-full ${dragging ? "" : "transition-transform duration-400 ease-out"}`}
+        style={{ transform: `translateX(calc(-${idx * 100}% + ${dragOffsetPct}%))` }}
       >
-        {images.map((src, i) => (
+        {images.map((img, i) => (
           <img
-            key={src + i}
-            src={src}
-            alt={`${title} ${i + 1}`}
+            key={img.id}
+            src={img.url}
+            alt={img.alt || `${title} ${i + 1}`}
             className={`w-full h-full flex-shrink-0 ${fullscreen ? "object-contain" : "object-cover"}`}
             loading="lazy"
             draggable={false}
@@ -64,9 +92,9 @@ export function ImageCarousel({ images, title, fullscreen }: { images: string[];
 
         {/* Indicadores de página */}
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-          {images.map((_, i) => (
+          {images.map((img, i) => (
             <button
-              key={i}
+              key={img.id}
               onClick={e => { e.stopPropagation(); setIdx(i); }}
               aria-label={`Ir para imagem ${i + 1}`}
               className={`rounded-full transition-all ${i === idx ? "w-4 h-1.5 bg-primary" : "w-1.5 h-1.5 bg-foreground/40"}`}
@@ -83,7 +111,7 @@ export function ImageCarousel({ images, title, fullscreen }: { images: string[];
 
       {zoom && (
         <div className="fixed inset-0 z-[700] bg-background/98 flex items-center justify-center" onClick={() => setZoom(false)}>
-          <img src={images[idx]} alt={title} className="max-w-full max-h-full object-contain" />
+          <img src={images[idx].url} alt={title} className="max-w-full max-h-full object-contain" />
           <button className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center border border-border text-foreground"><X size={16} /></button>
         </div>
       )}

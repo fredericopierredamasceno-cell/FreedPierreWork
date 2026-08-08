@@ -1,6 +1,7 @@
 /* Site copy defaults, theme defaults, seed content and CMS-record factory */
 import { Palette, Film, Sparkles, Mic, MessageCircle, Mail, Linkedin, Instagram } from "lucide-react";
 import type { CMSServiceContent, CMSAdvantageContent, CMSData, DisplayProject } from "./types";
+import { normalizeProjects } from "./gallery";
 import pizzaVideo from "../../imports/Lan_amento_Pizza_Ifood.mp4";
 export const CONTENT_DEFAULTS = {
   heroLine1: "ONDE ÁUDIO,",
@@ -76,7 +77,10 @@ export function makeCMSData(overrides: Partial<CMSData & { audio?: { name: strin
     theme: { ...THEME_DEFAULTS, ...(overrides.theme ?? {}) },
     services: overrides.services?.length ? overrides.services : DEFAULT_SERVICES,
     advantages: overrides.advantages?.length ? overrides.advantages : DEFAULT_ADVANTAGES,
-    projects: overrides.projects ?? [],
+    // Normaliza SEMPRE — qualquer projeto vindo do GitHub (formato antigo,
+    // intermediário ou novo) chega aqui e sai já convertido para `images[]`.
+    // Isso é o que garante "nenhuma migração manual necessária".
+    projects: normalizeProjects(overrides.projects ?? []),
     audios,
     releases: overrides.releases ?? [],
     pinned: overrides.pinned ?? [],

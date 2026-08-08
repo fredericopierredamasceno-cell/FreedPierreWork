@@ -9,12 +9,28 @@ export interface UploadProgress {
 export interface LogEntry { id: string; ts: Date; level: "info" | "success" | "error" | "warn"; msg: string; }
 export interface PublishStep { id: string; label: string; status: "pending" | "running" | "done" | "error"; error?: string; }
 
+// Uma imagem dentro da galeria de um projeto. Todo projeto de imagem usa
+// essa estrutura — mesmo quando tem 1 única foto — para que a arquitetura
+// não precise mudar quando o projeto ganha mais imagens depois.
+export interface GalleryImage {
+  id: string;
+  url: string;
+  order: number;
+  caption?: string;       // legenda opcional, exibida futuramente por imagem
+  alt?: string;            // texto alternativo opcional (acessibilidade/SEO)
+  isMain: boolean;         // imagem usada como capa (thumbnail do card, mediaUrl legado)
+  uploadedAt: number;
+}
+
 export interface CMSProject {
   id: string; title: string; description: string; category: string;
   subcategory?: string; // subcategoria opcional, gerenciada via CMS (ex: dentro de "Design Gráfico")
-  mediaType: "image" | "video" | "embed"; mediaUrl: string; thumbUrl?: string;
-  images?: string[]; // múltiplas imagens para carrossel (Design)
-  isCarousel?: boolean; // opção "Projeto em Carrossel" marcada no CMS (projetos antigos sem este campo continuam exibindo 1 imagem normalmente)
+  mediaType: "image" | "video" | "embed";
+  mediaUrl: string; // legado: sempre igual à URL da imagem marcada como principal em `images` (mantido para compatibilidade com código/HTML antigos que ainda leem mediaUrl direto)
+  thumbUrl?: string;
+  images?: GalleryImage[]; // galeria completa do projeto (tipo "image") — 1 imagem já usa esta estrutura
+  /** @deprecated não é mais gravado — o carrossel é inferido de `images.length > 1`. Mantido só para ler dados antigos. */
+  isCarousel?: boolean;
   embedPlatform?: "youtube" | "vimeo"; embedId?: string;
   isFixed?: boolean; createdAt: number;
   hidden?: boolean; // ocultar da visualização pública sem apagar (admin ainda vê) — vale para vídeo, imagem, motion, design gráfico e qualquer categoria futura

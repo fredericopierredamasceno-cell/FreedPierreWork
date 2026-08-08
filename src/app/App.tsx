@@ -146,7 +146,7 @@ export function PortfolioApp() {
   const handleDeleteProject = async (id: string) => {
     const p = cms.projects.find(p => p.id === id);
     if (p) {
-      const allUrls = [p.mediaUrl, p.thumbUrl, ...(p.images ?? [])].filter(Boolean) as string[];
+      const allUrls = [p.mediaUrl, p.thumbUrl, ...(p.images ?? []).map(img => img.url)].filter(Boolean) as string[];
       for (const u of allUrls) { if (u.startsWith("/uploads/")) await deleteFile(u); }
     }
     await publish({ ...cms, projects: cms.projects.filter(p => p.id !== id), pinned: cms.pinned.filter(p => p !== id) });
