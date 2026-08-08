@@ -16,6 +16,10 @@
     "stat4Label": "Possibilidades.",
     "servicesHeading1": "Cada projeto pede uma",
     "servicesHeading2": "solução diferente.",
+    "servicesSectionLabel": "Serviços",
+    "workSectionLabel": "Explorando Meu Trabalho",
+    "whyMeSectionLabel": "Por que eu?",
+    "contactSectionLabel": "Contato",
     "difHeading1": "Imagem,",
     "difHeading2": "som e movimento",
     "difHeading3": "começam pelo mesmo lugar.",
@@ -205,7 +209,16 @@
       "isFeatured": false
     }
   ],
-  "releases": [],
+  "releases": [
+    {
+      "id": "release-1786188891307",
+      "title": "Alienado",
+      "artist": "UsBR - Freed Pierre",
+      "coverUrl": "/uploads/images/1786188887251-Capa_Alienado_Oficial.jpg",
+      "spotifyUrl": "https://open.spotify.com/intl-pt/track/2UEX3XwNQMg6HScavb0vFl?si=b46fadbb78084e5f",
+      "createdAt": 1786188891307
+    }
+  ],
   "pinned": [
     "proj-1786028389594",
     "proj-1786029333026",
@@ -222,5 +235,5 @@
     "Embalagens",
     "Outros"
   ],
-  "updatedAt": "2026-08-07T15:29:59.210Z"
+  "updatedAt": "2026-08-08T11:34:52.054Z"
 }
