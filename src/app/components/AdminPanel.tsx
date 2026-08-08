@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import {
   Settings, Plus, X, Pin, Trash2, Upload, Youtube, Music, Star,
-  Github, Library, FolderOpen, FileText, Sparkles, Paintbrush, Info, ScrollText, Disc,
+  Github, Library, FolderOpen, FileText, Sparkles, Paintbrush, Info, ScrollText, Disc, LayoutGrid,
 } from "lucide-react";
 import type {
   GitHubConfig, CMSData, CMSAudio, CMSProject, CMSRelease, UploadProgress, LogEntry, SaveStatus,
@@ -17,6 +17,8 @@ import { EditAudioModal } from "./EditAudioModal";
 import { EditProjectModal } from "./EditProjectModal";
 import { VisibilityToggleButton, VisibilityBadge } from "./edit/VisibilityToggleButton";
 import { LogsTab } from "./LogsTab";
+import { DashboardTab } from "./DashboardTab";
+import { TextField } from "./ui-admin/Field";
 export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFile, syncFromGitHub, ghConfig, setGhConfig, clearGhConfig, saveStatus, saveError, logs, onOpenUpload, onOpenReleaseForm, onDeleteRelease, onToggleHideRelease }: {
   open: boolean; onClose: () => void; cms: CMSData; setCms: (d: CMSData) => void;
   publish: (d: CMSData) => Promise<boolean>;
@@ -29,7 +31,7 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
   onDeleteRelease: (id: string) => Promise<void>;
   onToggleHideRelease: (id: string) => void;
 }) {
-  const [tab, setTab] = useState<AdminTab>("github");
+  const [tab, setTab] = useState<AdminTab>("dashboard");
   const [editingAudio, setEditingAudio] = useState<CMSAudio | null>(null);
   const [editingProject, setEditingProject] = useState<CMSProject | null>(null);
   const [newDesignCat, setNewDesignCat] = useState("");
@@ -71,22 +73,22 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
   };
 
   const toggleHideAudio = (id: string) => {
-    setCms({ ...cms, audios: cms.audios.map(a => a.id === id ? { ...a, hidden: !a.hidden } : a) });
+    setCms({ ...cms, audios: cms.audios.map(a => a.id === id ? { ...a, hidden: !a.hidden, updatedAt: Date.now() } : a) });
   };
 
   // Apenas uma música pode estar fixada como destaque por vez — marcar outra
   // remove automaticamente a marcação anterior.
   const toggleFeaturedAudio = (id: string) => {
-    setCms({ ...cms, audios: cms.audios.map(a => ({ ...a, isFeatured: a.id === id ? !a.isFeatured : false })) });
+    setCms({ ...cms, audios: cms.audios.map(a => ({ ...a, isFeatured: a.id === id ? !a.isFeatured : false, updatedAt: a.id === id ? Date.now() : a.updatedAt })) });
   };
 
   const saveAudio = async (updated: CMSAudio) => {
-    setCms({ ...cms, audios: cms.audios.map(a => a.id === updated.id ? updated : a) });
+    setCms({ ...cms, audios: cms.audios.map(a => a.id === updated.id ? { ...updated, updatedAt: Date.now() } : a) });
     setEditingAudio(null);
   };
 
   const saveProject = async (updated: CMSProject) => {
-    setCms({ ...cms, projects: cms.projects.map(p => p.id === updated.id ? updated : p) });
+    setCms({ ...cms, projects: cms.projects.map(p => p.id === updated.id ? { ...updated, updatedAt: Date.now() } : p) });
     setEditingProject(null);
   };
 
@@ -99,7 +101,7 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
     const nowHidden = !proj.hidden;
     setCms({
       ...cms,
-      projects: cms.projects.map(p => p.id === id ? { ...p, hidden: nowHidden } : p),
+      projects: cms.projects.map(p => p.id === id ? { ...p, hidden: nowHidden, updatedAt: Date.now() } : p),
       pinned: nowHidden ? cms.pinned.filter(pid => pid !== id) : cms.pinned,
     });
   };
@@ -133,15 +135,26 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
     });
   };
 
-  const TABS: { id: AdminTab; icon: ReactNode; label: string }[] = [
-    { id: "github", icon: <Github size={12} />, label: "GitHub" },
-    { id: "midias", icon: <Library size={12} />, label: "Mídias" },
-    { id: "uploads", icon: <FolderOpen size={12} />, label: "Uploads" },
-    { id: "textos", icon: <FileText size={12} />, label: "Textos" },
-    { id: "servicos", icon: <Sparkles size={12} />, label: "Serviços" },
-    { id: "cores", icon: <Paintbrush size={12} />, label: "Cores" },
-    { id: "info", icon: <Info size={12} />, label: "Info" },
-    { id: "logs", icon: <ScrollText size={12} />, label: `Logs${logs.length ? `(${logs.length})` : ""}` },
+  // Abas agrupadas por área — mesma lista de abas de sempre (nenhum
+  // conteúdo mudou), só a ordem e separadores visuais entre grupos.
+  const TAB_GROUPS: { group: string; tabs: { id: AdminTab; icon: ReactNode; label: string }[] }[] = [
+    { group: "Visão geral", tabs: [
+      { id: "dashboard", icon: <LayoutGrid size={12} />, label: "Dashboard" },
+    ] },
+    { group: "Conteúdo", tabs: [
+      { id: "uploads", icon: <FolderOpen size={12} />, label: "Uploads" },
+      { id: "midias", icon: <Library size={12} />, label: "Mídias" },
+      { id: "textos", icon: <FileText size={12} />, label: "Textos" },
+      { id: "servicos", icon: <Sparkles size={12} />, label: "Serviços" },
+    ] },
+    { group: "Configurações", tabs: [
+      { id: "cores", icon: <Paintbrush size={12} />, label: "Cores" },
+      { id: "github", icon: <Github size={12} />, label: "GitHub" },
+      { id: "info", icon: <Info size={12} />, label: "Info" },
+    ] },
+    { group: "Sistema", tabs: [
+      { id: "logs", icon: <ScrollText size={12} />, label: `Logs${logs.length ? `(${logs.length})` : ""}` },
+    ] },
   ];
 
   const contentFields: { k: keyof SiteContent; l: string; m?: boolean }[] = [
@@ -151,9 +164,13 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
     { k: "stat2Val", l: "Stat 2 Valor" }, { k: "stat2Label", l: "Stat 2 Label" },
     { k: "stat3Val", l: "Stat 3 Valor" }, { k: "stat3Label", l: "Stat 3 Label" },
     { k: "stat4Val", l: "Stat 4 Valor" }, { k: "stat4Label", l: "Stat 4 Label" },
+    { k: "servicesSectionLabel", l: "Rótulo da seção Serviços" },
     { k: "servicesHeading1", l: "Serviços Título L1" }, { k: "servicesHeading2", l: "Serviços Título L2" },
+    { k: "workSectionLabel", l: "Rótulo da seção Portfólio" },
+    { k: "whyMeSectionLabel", l: "Rótulo da seção Diferenciais" },
     { k: "difHeading1", l: "Diferenciais L1" }, { k: "difHeading2", l: "Diferenciais L2" }, { k: "difHeading3", l: "Diferenciais L3" },
     { k: "difSubtext", l: "Diferenciais Parágrafo", m: true },
+    { k: "contactSectionLabel", l: "Rótulo da seção Contato" },
     { k: "contactHeading", l: "Contato Título" }, { k: "contactSubtext", l: "Contato Sub", m: true },
     { k: "footerCopy", l: "Rodapé" },
   ];
@@ -165,8 +182,8 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
 
   return (
     <div className="fixed inset-0 z-[300] flex items-end md:items-center justify-center">
-      <div className="absolute inset-0 bg-background/92 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-3xl max-h-[96vh] md:max-h-[92vh] flex flex-col bg-card border border-border border-b-0 md:border-b">
+      <div className="absolute inset-0 bg-background/92 backdrop-blur-sm" style={{ animation: "fp-admin-fade 0.18s ease-out" }} onClick={onClose} />
+      <div className="relative z-10 w-full max-w-3xl max-h-[96vh] md:max-h-[92vh] flex flex-col bg-card border border-border border-b-0 md:border-b" style={{ animation: "fp-admin-in 0.22s cubic-bezier(0.16,1,0.3,1)" }}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2">
             <Settings size={14} className="text-primary" />
@@ -174,20 +191,26 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
             {!ghOk && <span className="font-mono text-[9px] text-amber-400 border border-amber-500/30 px-1.5 py-0.5 uppercase">Sem token</span>}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => { onClose(); onOpenUpload(); }} className="flex items-center gap-1.5 px-3 py-1.5 font-bold text-[10px] tracking-widest uppercase bg-primary text-background"><Plus size={10} />Upload</button>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center border border-border text-muted-foreground"><X size={14} /></button>
+            <button onClick={() => { onClose(); onOpenUpload(); }} className="flex items-center gap-1.5 px-3 py-1.5 font-bold text-[10px] tracking-widest uppercase bg-primary text-background transition-transform duration-150 hover:brightness-110 active:scale-95"><Plus size={10} />Upload</button>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center border border-border text-muted-foreground transition-colors duration-150 hover:border-primary hover:text-primary"><X size={14} /></button>
           </div>
         </div>
 
-        <div className="flex border-b border-border flex-shrink-0 overflow-x-auto">
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`flex items-center gap-1.5 px-3 py-3 font-mono text-[10px] tracking-widest uppercase border-b-2 flex-shrink-0 transition-colors ${tab === t.id ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
-              {t.icon}{t.label}
-            </button>
+        <div className="flex items-stretch border-b border-border flex-shrink-0 overflow-x-auto">
+          {TAB_GROUPS.map((g, gi) => (
+            <div key={g.group} className={`flex items-stretch flex-shrink-0 ${gi > 0 ? "border-l border-border/60 ml-1 pl-1" : ""}`}>
+              {g.tabs.map(t => (
+                <button key={t.id} onClick={() => setTab(t.id)} title={g.group} className={`flex items-center gap-1.5 px-3 py-3 font-mono text-[10px] tracking-widest uppercase border-b-2 flex-shrink-0 transition-colors duration-150 ${tab === t.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+                  {t.icon}{t.label}
+                </button>
+              ))}
+            </div>
           ))}
         </div>
 
         <div className="overflow-y-auto flex-1 p-4 md:p-5">
+
+          {tab === "dashboard" && <DashboardTab cms={cms} />}
 
           {tab === "github" && <GitHubConfigTab ghConfig={ghConfig} onSave={setGhConfig} onClear={clearGhConfig} onPublish={() => publish(cms)} onSync={syncFromGitHub} cms={cms} saveStatus={saveStatus} saveError={saveError} />}
 
@@ -338,11 +361,7 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
             <div className="space-y-3">
               <p className="font-mono text-[10px] text-muted-foreground">Edite e clique Publicar (aba GitHub) para salvar.</p>
               {contentFields.map(({ k, l, m }) => (
-                <div key={k}>
-                  <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">{l}</label>
-                  {m ? <textarea value={cms.content[k]} onChange={e => updContent(k, e.target.value)} rows={3} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary resize-none" />
-                    : <input value={cms.content[k]} onChange={e => updContent(k, e.target.value)} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />}
-                </div>
+                <TextField key={k} label={l} value={cms.content[k]} onChange={v => updContent(k, v)} multiline={m} required />
               ))}
             </div>
           )}
@@ -353,9 +372,9 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
               {cms.services.map((s, i) => (
                 <div key={i} className="border border-border p-4 space-y-3">
                   <div className="font-mono text-[10px] text-primary uppercase tracking-widest">Serviço {i + 1} — {SERVICE_NUMBERS[i]}</div>
-                  <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Título</label><input value={s.title} onChange={e => updService(i, "title", e.target.value)} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
-                  <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Descrição</label><textarea value={s.description} onChange={e => updService(i, "description", e.target.value)} rows={3} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary resize-none" /></div>
-                  <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Tags (separadas por vírgula)</label><input value={s.tags.join(", ")} onChange={e => updService(i, "tags", e.target.value.split(",").map(t => t.trim()).filter(Boolean))} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
+                  <TextField label="Título" value={s.title} onChange={v => updService(i, "title", v)} required />
+                  <TextField label="Descrição" value={s.description} onChange={v => updService(i, "description", v)} multiline rows={3} required />
+                  <TextField label="Tags (separadas por vírgula)" value={s.tags.join(", ")} onChange={v => updService(i, "tags", v.split(",").map(t => t.trim()).filter(Boolean))} hint="Ex: Photoshop, Identidade Visual" />
                 </div>
               ))}
               <div className="border-t border-border pt-4">
@@ -381,8 +400,8 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
                 {cms.advantages.map((a, i) => (
                   <div key={i} className="border border-border p-4 space-y-2 mb-2">
                     <div className="font-mono text-[10px] text-muted-foreground uppercase">Vantagem {i + 1}</div>
-                    <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Título</label><input value={a.title} onChange={e => updAdvantage(i, "title", e.target.value)} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" /></div>
-                    <div><label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1">Texto</label><textarea value={a.body} onChange={e => updAdvantage(i, "body", e.target.value)} rows={2} className="w-full bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary resize-none" /></div>
+                    <TextField label="Título" value={a.title} onChange={v => updAdvantage(i, "title", v)} required />
+                    <TextField label="Texto" value={a.body} onChange={v => updAdvantage(i, "body", v)} multiline rows={2} required />
                   </div>
                 ))}
               </div>
@@ -419,9 +438,16 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
 
         <div className="border-t border-border px-5 py-3 flex items-center justify-between flex-shrink-0">
           <span className="font-mono text-[10px] text-muted-foreground">{ALL_SEEDS.length + cms.projects.length} proj · {cms.audios.length} áudio · {cms.releases.length} lançamento(s) · {!ghOk ? "⚠ sem token" : "✓ GitHub ok"}</span>
-          <button onClick={onClose} className="font-mono text-xs text-muted-foreground uppercase tracking-widest">Fechar</button>
+          <button onClick={onClose} className="font-mono text-xs text-muted-foreground uppercase tracking-widest transition-colors duration-150 hover:text-primary">Fechar</button>
         </div>
       </div>
+      <style>{`
+        @keyframes fp-admin-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fp-admin-in { from { opacity: 0; transform: translateY(10px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @media (prefers-reduced-motion: reduce) {
+          .fixed[class*="z-[300]"] * { animation-duration: 0.01ms !important; }
+        }
+      `}</style>
     </div>
   );
 }

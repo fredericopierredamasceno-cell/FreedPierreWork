@@ -390,7 +390,7 @@ export function PortfolioApp() {
       {/* ── SERVIÇOS ── */}
       <section id="servicos" className="py-16 md:py-28">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
-          <FadeIn><SectionLabel>Serviços</SectionLabel></FadeIn>
+          <FadeIn><SectionLabel>{cms.content.servicesSectionLabel}</SectionLabel></FadeIn>
           <FadeIn delay={60}>
             <h2 className="text-4xl md:text-7xl font-black uppercase text-foreground leading-none mb-10 md:mb-16" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
               {content.servicesHeading1}<br /><span className="text-primary">{content.servicesHeading2}</span>
@@ -456,7 +456,7 @@ export function PortfolioApp() {
       {/* ── TRABALHOS ── */}
       <section id="trabalhos" className="py-16 md:py-24 bg-background overflow-hidden">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
-          <FadeIn><SectionLabel>Explorando Meu Trabalho</SectionLabel></FadeIn>
+          <FadeIn><SectionLabel>{cms.content.workSectionLabel}</SectionLabel></FadeIn>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10 md:mb-12">
             <FadeIn delay={60}><h2 className="text-4xl md:text-7xl font-black uppercase text-foreground leading-none" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Portfólio<br /><span className="text-primary">por área</span></h2></FadeIn>
             {adminMode && <FadeIn delay={100}><button onClick={() => setUploadOpen(true)} className="flex items-center gap-2 px-4 py-2.5 font-bold text-xs tracking-widest uppercase bg-primary text-background self-start sm:self-auto"><Plus size={13} />Adicionar</button></FadeIn>}
@@ -501,7 +501,7 @@ export function PortfolioApp() {
       {/* ── DIFERENCIAIS ── */}
       <section id="diferenciais" className="py-16 md:py-28 overflow-hidden">
         <div className="max-w-6xl mx-auto px-5 md:px-6 overflow-hidden">
-          <FadeIn><SectionLabel>Por que eu?</SectionLabel></FadeIn>
+          <FadeIn><SectionLabel>{cms.content.whyMeSectionLabel}</SectionLabel></FadeIn>
               <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-start w-full" style={{ maxWidth: "100%" }}>
             <FadeIn delay={60} className="min-w-0 w-full">
               <div className="min-w-0 w-full" style={{ maxWidth: "100%" }}>
@@ -565,7 +565,7 @@ export function PortfolioApp() {
       {/* ── CONTATO ── */}
       <section id="contato" className="py-16 md:py-28">
         <div className="max-w-6xl mx-auto px-5 md:px-6">
-          <FadeIn><SectionLabel>Contato</SectionLabel></FadeIn>
+          <FadeIn><SectionLabel>{cms.content.contactSectionLabel}</SectionLabel></FadeIn>
           <div className="grid md:grid-cols-2 gap-10 md:gap-16">
             <FadeIn delay={60}>
               <div>

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Loader2, RefreshCw, CheckCircle2, AlertCircle, Github, Eye, EyeOff, Check } from "lucide-react";
+import { Loader2, RefreshCw, CheckCircle2, AlertCircle, Eye, EyeOff, Check } from "lucide-react";
 import type { GitHubConfig, CMSData, SaveStatus } from "../lib/types";
 import { ghTestConnection } from "../lib/github";
+import { PublishReviewModal } from "./PublishReviewModal";
 export function GitHubConfigTab({ ghConfig, onSave, onClear, onPublish, onSync, cms, saveStatus, saveError }: {
   ghConfig: GitHubConfig | null; onSave: (cfg: GitHubConfig) => void; onClear: () => void;
   onPublish: () => void; onSync: () => Promise<boolean>; cms: CMSData; saveStatus: SaveStatus; saveError: string;
@@ -15,6 +16,7 @@ export function GitHubConfigTab({ ghConfig, onSave, onClear, onPublish, onSync, 
   const [testResult, setTestResult] = useState<{ ok: boolean; name?: string; error?: string } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<boolean | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const configComplete = !!ghConfig && !!ghConfig.token;
 
   return (
@@ -45,8 +47,8 @@ export function GitHubConfigTab({ ghConfig, onSave, onClear, onPublish, onSync, 
         <div className="font-mono text-[10px] text-primary tracking-widest uppercase mb-2">Publicar → GitHub → Vercel</div>
         <p className="text-xs text-muted-foreground font-light mb-3">Salva em <code>cms/data.json</code>. Vercel faz deploy automaticamente.</p>
         <div className="flex items-center gap-3 flex-wrap">
-          <button onClick={onPublish} disabled={!configComplete || saveStatus === "saving"} className={`flex items-center gap-2 px-5 py-2.5 font-bold text-xs tracking-widest uppercase transition-all ${!configComplete ? "bg-muted text-muted-foreground cursor-not-allowed" : saveStatus === "saving" ? "bg-primary/60 text-background" : "bg-primary text-background"}`}>
-            {saveStatus === "saving" ? <><Loader2 size={12} className="animate-spin" />Publicando...</> : <><Github size={12} />Publicar agora</>}
+          <button onClick={() => setReviewOpen(true)} disabled={!configComplete || saveStatus === "saving"} className={`flex items-center gap-2 px-5 py-2.5 font-bold text-xs tracking-widest uppercase transition-all ${!configComplete ? "bg-muted text-muted-foreground cursor-not-allowed" : saveStatus === "saving" ? "bg-primary/60 text-background" : "bg-primary text-background"}`}>
+            {saveStatus === "saving" ? <><Loader2 size={12} className="animate-spin" />Publicando...</> : <><Eye size={12} />Revisar e publicar</>}
           </button>
           {saveStatus === "success" && <span className="flex items-center gap-1.5 font-mono text-[10px] text-green-400"><CheckCircle2 size={11} />Publicado! ~2 min...</span>}
           {saveStatus === "error" && saveError && <span className="font-mono text-[10px] text-red-400 max-w-[200px] flex items-center gap-1"><AlertCircle size={11} />{saveError}</span>}
@@ -85,6 +87,14 @@ export function GitHubConfigTab({ ghConfig, onSave, onClear, onPublish, onSync, 
         <div className="text-primary uppercase tracking-widest mb-2">Status</div>
         <div>{cms.projects.length} projeto(s) · {cms.audios.length} faixa(s) · {new Date(cms.updatedAt).toLocaleString("pt-BR")}</div>
       </div>
+
+      <PublishReviewModal
+        cms={cms}
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        publishing={saveStatus === "saving"}
+        onConfirm={() => { onPublish(); setReviewOpen(false); }}
+      />
     </div>
   );
 }
