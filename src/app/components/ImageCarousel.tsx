@@ -3,8 +3,8 @@ import type React from "react";
 import { ChevronLeft, ChevronRight, ZoomIn, X } from "lucide-react";
 import type { GalleryImage } from "../lib/types";
 
-export function ImageCarousel({ images, title, fullscreen }: { images: GalleryImage[]; title: string; fullscreen?: boolean }) {
-  const [idx, setIdx] = useState(0);
+export function ImageCarousel({ images, title, fullscreen, initialIndex = 0 }: { images: GalleryImage[]; title: string; fullscreen?: boolean; initialIndex?: number }) {
+  const [idx, setIdx] = useState(() => (initialIndex >= 0 && initialIndex < images.length ? initialIndex : 0));
   const [zoom, setZoom] = useState(false);
   const [dragOffsetPct, setDragOffsetPct] = useState(0); // acompanha o dedo/mouse durante o arraste, estilo Instagram
   const [dragging, setDragging] = useState(false);
@@ -112,7 +112,7 @@ export function ImageCarousel({ images, title, fullscreen }: { images: GalleryIm
       {zoom && (
         <div className="fixed inset-0 z-[700] bg-background/98 flex items-center justify-center" onClick={() => setZoom(false)}>
           <img src={images[idx].url} alt={title} className="max-w-full max-h-full object-contain" />
-          <button className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center border border-border text-foreground"><X size={16} /></button>
+          <button onClick={e => { e.stopPropagation(); setZoom(false); }} className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center border border-border text-foreground"><X size={16} /></button>
         </div>
       )}
     </div>

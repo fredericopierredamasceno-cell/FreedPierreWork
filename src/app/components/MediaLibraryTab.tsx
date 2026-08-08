@@ -46,7 +46,7 @@ export function MediaLibraryTab({
               {p.mediaType === "video" && <video src={p.mediaUrl} muted className="w-full h-full object-cover" />}
               {p.mediaType === "embed" && p.thumbUrl && <img src={p.thumbUrl} alt="" className="w-full h-full object-cover" />}
               {p.mediaType === "embed" && !p.thumbUrl && <div className="w-full h-full flex items-center justify-center"><Youtube size={16} className="text-red-400" /></div>}
-              {p.mediaType === "image" && <img src={(p.images?.[0]?.url ?? p.mediaUrl)} alt="" className="w-full h-full object-cover" loading="lazy" />}
+              {p.mediaType === "image" && <img src={(p.images?.find(img => img.isMain)?.url ?? p.images?.[0]?.url ?? p.mediaUrl)} alt="" className="w-full h-full object-cover" loading="lazy" />}
             </div>
             <div className="p-2">
               <p className="text-xs font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{p.title}</p>

@@ -241,7 +241,7 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
                               {isEmbed && p.thumbUrl && <img src={p.thumbUrl} alt="" className="w-full h-full object-cover" />}
                               {isEmbed && !p.thumbUrl && <div className="w-full h-full flex items-center justify-center"><Youtube size={12} className="text-red-400" /></div>}
                               {!isEmbed && p.mediaType === "video" && <video src={p.mediaUrl} muted className="w-full h-full object-cover" />}
-                              {!isEmbed && p.mediaType === "image" && <img src={(p.images?.[0]?.url ?? p.thumbUrl ?? p.mediaUrl)} alt="" className="w-full h-full object-cover" loading="lazy" />}
+                              {!isEmbed && p.mediaType === "image" && <img src={(p.images?.find(img => img.isMain)?.url ?? p.images?.[0]?.url ?? p.thumbUrl ?? p.mediaUrl)} alt="" className="w-full h-full object-cover" loading="lazy" />}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-bold text-foreground truncate" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{p.title}</div>

@@ -63,7 +63,7 @@ export function ProjectCard({ item, onDelete, onTogglePin, isPinned, showAdmin, 
       )}
       {isMultiImage && item.images ? (
         <div className="absolute inset-0" style={{ pointerEvents: "none" }}>
-          <ImageCarousel images={item.images} title={item.title} />
+          <ImageCarousel images={item.images} title={item.title} initialIndex={Math.max(0, item.images.findIndex(img => img.isMain))} />
         </div>
       ) : item.mediaType === "image" && (
         <img src={item.mediaUrl} alt={item.title} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]" loading="lazy" />

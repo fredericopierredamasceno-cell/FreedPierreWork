@@ -38,7 +38,10 @@ export function normalizeProjectImages(p: CMSProject): CMSProject {
       }))
       .sort((a, b) => a.order - b.order)
       .map((img, i) => ({ ...img, order: i }));
-    if (images.length && !images.some(i => i.isMain)) images[0] = { ...images[0], isMain: true };
+    // Garante no máximo 1 capa: se nenhuma vier marcada, usa a primeira; se
+    // vier mais de uma marcada (dado externo corrompido), mantém só a primeira.
+    const mainIdx = images.findIndex(i => i.isMain);
+    images = images.map((img, i) => ({ ...img, isMain: i === (mainIdx === -1 ? 0 : mainIdx) }));
   } else if (p.mediaUrl) {
     // projeto antigo — apenas 1 imagem principal, sem galeria
     images = [{ id: genImgId(), url: p.mediaUrl, order: 0, isMain: true, uploadedAt: p.createdAt || Date.now() }];

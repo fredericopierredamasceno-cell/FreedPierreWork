@@ -62,7 +62,7 @@ export function GalleryModal({ service, allProjects, audios, initialItem, onClos
                   <iframe src={selected.embedPlatform === "youtube" ? `https://www.youtube.com/embed/${selected.embedId}?playsinline=1&rel=0` : `https://player.vimeo.com/video/${selected.embedId}?playsinline=1`} className="w-full aspect-video" allowFullScreen allow="autoplay; fullscreen; picture-in-picture; xr-spatial-tracking" style={{ border: 0 }} />
                 )}
                 {selected.mediaType === "image" && (selected.images && selected.images.length > 1
-                  ? <div className="w-full h-full" style={{ minHeight: 240 }}><ImageCarousel images={selected.images} title={selected.title} fullscreen /></div>
+                  ? <div className="w-full h-full" style={{ minHeight: 240 }}><ImageCarousel images={selected.images} title={selected.title} fullscreen initialIndex={Math.max(0, selected.images.findIndex(img => img.isMain))} /></div>
                   : <img src={selected.mediaUrl} alt={selected.title} className="w-full h-full object-contain max-h-[55vh]" />
                 )}
               </div>
