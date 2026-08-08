@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import {
-  Mail, Menu, X, ChevronDown, Mic, Film, Palette,
-  MessageCircle, ArrowUpRight, Play, Upload, Trash2, Plus,
+  Mail, Menu, X, ChevronDown, Film,
+  MessageCircle, ArrowUpRight, Plus,
   Sparkles, Settings, LogOut, Loader2, CheckCircle2,
   Linkedin, Instagram,
 } from "lucide-react";
@@ -54,8 +54,10 @@ export function PortfolioApp() {
   const visibleSeeds = ALL_SEEDS.filter(s => !hiddenSeeds.has(s.id));
   // Projetos ocultos (vídeo, imagem, motion, design gráfico ou qualquer
   // categoria futura) continuam salvos no CMS mas não aparecem no site —
-  // mesmo padrão já usado para os áudios.
-  const visibleUploadedProjects = cms.projects.filter(p => !p.hidden);
+  // mesmo padrão já usado para os áudios: em modo admin, itens ocultos
+  // continuam visíveis (com indicação "Oculto") para que possam ser geridos
+  // direto pela galeria; o público nunca os vê.
+  const visibleUploadedProjects = adminMode ? cms.projects : cms.projects.filter(p => !p.hidden);
   const allProjects: DisplayProject[] = [...visibleSeeds, ...visibleUploadedProjects];
   const featuredProjects = allProjects.filter(p => pinned.has(p.id));
   const ghOk = !!ghConfig?.token;

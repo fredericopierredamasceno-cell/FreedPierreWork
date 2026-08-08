@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Youtube, ImageIcon, Plus, X as XIcon, AlertCircle, CheckCircle2, ChevronUp, ChevronDown, GripVertical, Check } from "lucide-react";
 import type { CMSProject, UploadProgress } from "../lib/types";
 import { CATEGORIES, DESIGN_SERVICE_TITLE } from "../lib/defaults";
@@ -68,6 +68,22 @@ export function EditProjectModal({ project, open, onClose, onSave, onToggleHidde
     if (!embedUrl.trim()) { setParsedEmbed(null); return; }
     setParsedEmbed(parseVideoUrl(embedUrl.trim()));
   }, [embedUrl, project?.mediaType]);
+
+  // Libera as object URLs criadas para pré-visualizar novas imagens locais
+  // assim que deixam de estar em uso (removidas, ou substituídas ao reabrir
+  // o modal com outro projeto) — evita vazamento de memória em sessões
+  // longas de admin com muitas trocas de imagem no carrossel.
+  const galleryUrlsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const current = new Set(gallery.filter(s => s.kind === "new").map(s => s.previewUrl));
+    for (const url of galleryUrlsRef.current) {
+      if (!current.has(url)) URL.revokeObjectURL(url);
+    }
+    galleryUrlsRef.current = current;
+  }, [gallery]);
+  useEffect(() => {
+    return () => { galleryUrlsRef.current.forEach(url => URL.revokeObjectURL(url)); };
+  }, []);
 
   if (!open || !project) return null;
 

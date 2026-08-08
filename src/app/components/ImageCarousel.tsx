@@ -6,21 +6,26 @@ export function ImageCarousel({ images, title, fullscreen }: { images: string[];
   const [idx, setIdx] = useState(0);
   const [zoom, setZoom] = useState(false);
   const startX = useRef<number | null>(null);
-  const dragging = useRef(false);
 
   const clamp = (i: number) => (i + images.length) % images.length;
   const prev = () => setIdx(i => clamp(i - 1));
   const next = () => setIdx(i => clamp(i + 1));
 
   const handlers = {
-    onPointerDown: (e: React.PointerEvent) => { startX.current = e.clientX; dragging.current = true; },
+    // setPointerCapture garante que o pointerup chegue a este elemento mesmo se
+    // o dedo/cursor sair da área do carrossel durante o swipe (comum em mobile).
+    onPointerDown: (e: React.PointerEvent) => { startX.current = e.clientX; e.currentTarget.setPointerCapture(e.pointerId); },
     onPointerUp: (e: React.PointerEvent) => {
       if (startX.current === null) return;
       const dx = e.clientX - startX.current;
-      startX.current = null; dragging.current = false;
+      startX.current = null;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
       if (Math.abs(dx) > 40) { dx < 0 ? next() : prev(); }
     },
-    onPointerCancel: () => { startX.current = null; dragging.current = false; },
+    onPointerCancel: (e: React.PointerEvent) => {
+      startX.current = null;
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    },
   };
 
   if (images.length === 0) return null;
