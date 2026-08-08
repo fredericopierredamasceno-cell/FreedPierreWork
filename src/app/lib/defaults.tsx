@@ -23,6 +23,43 @@ export const CONTENT_DEFAULTS = {
   contactHeading: "Bora criar algo?",
   contactSubtext: "Tem um projeto de design, vídeo, motion ou música? Me manda uma mensagem. Respondo pelo WhatsApp ou e-mail — sem enrolação.",
   footerCopy: "© 2026 Frederico Pierre · Design · Motion Designer · Video Maker · Audiovisual",
+
+  // ── Fase 1: textos que estavam hardcoded no JSX, migrados para o CMS ──
+  navCtaServicos: "Ver serviços",
+  sectionLabelServicos: "Serviços",
+  sectionLabelPortfolio: "Explorando Meu Trabalho",
+  portfolioTitleLine1: "Portfólio",
+  portfolioTitleLine2: "por área",
+  portfolioFeaturedBadge: "Em Destaque",
+  portfolioEmptyState: "Nenhum projeto ainda",
+  portfolioEmptyStateCta: "Primeiro projeto",
+  serviceCtaGaleria: "Ver galeria",
+  serviceCtaOrcamento: "Solicitar orçamento",
+  sectionLabelDiferenciais: "Por que eu?",
+  sectionLabelContato: "Contato",
+  contactWhatsappCta: "Falar no WhatsApp",
+  galleryAboutLabel: "Sobre o projeto",
+  galleryAllLabel: "Todos",
+  galleryOtherLabel: "Outros",
+  galleryEmptyCategory: "Nenhum projeto nessa categoria ainda",
+  galleryEmptyGeneric: "Em breve — novos projetos aqui",
+  galleryCtaProducao: "Solicitar produção",
+  navLinkTrabalhos: "Trabalhos",
+  navLinkLancamentos: "Lançamentos",
+  navCtaOrcamento: "Orçamento",
+  heroCtaWhatsapp: "WhatsApp",
+  releasesSubheading: "Ouça nas plataformas",
+  releasesEmpty: "Nenhum lançamento cadastrado ainda",
+  releasesTitleLine1: "Disponível",
+  releasesTitleLine2: "nas plataformas",
+  releasesCtaNew: "Novo lançamento",
+  releasesCtaFirst: "Primeiro lançamento",
+  audioEmpty: "Nenhuma produção cadastrada ainda",
+  audioEmptyHint: "Faça upload de áudios no painel admin",
+
+  // ── Fonte única do WhatsApp — antes duplicado em 4 lugares diferentes ──
+  contactWhatsappDisplay: "(31) 97579-1151",
+  contactWhatsappNumber: "5531975791151",
 };
 export type SiteContent = typeof CONTENT_DEFAULTS;
 
@@ -134,7 +171,7 @@ export const SERVICE_CATEGORIES = [["Design Gráfico"], ["Video Making"], ["Moti
 export const AUDIO_ACCEPT = "audio/mpeg,audio/wav,audio/ogg,audio/aac,audio/mp4,audio/flac,audio/x-flac,.mp3,.wav,.ogg,.aac,.m4a,.flac";
 
 export const CONTACT_LINKS = [
-  { icon: <MessageCircle size={18} />, label: "WhatsApp", value: "(31) 97579-1151", href: "https://wa.me/5531975791151" },
+  { icon: <MessageCircle size={18} />, label: "WhatsApp", value: CONTENT_DEFAULTS.contactWhatsappDisplay, href: `https://wa.me/${CONTENT_DEFAULTS.contactWhatsappNumber}` },
   { icon: <Mail size={18} />, label: "E-mail", value: "fredericopierredamasceno@gmail.com", href: "mailto:fredericopierredamasceno@gmail.com" },
   { icon: <Linkedin size={18} />, label: "LinkedIn", value: "linkedin.com/in/fredericopierre", href: "https://www.linkedin.com/in/fredericopierre" },
   { icon: <Instagram size={18} />, label: "Instagram", value: "@freedpierre", href: "https://www.instagram.com/freedpierre/" },
