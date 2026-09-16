@@ -140,6 +140,20 @@
   ],
   "projects": [
     {
+      "id": "proj-1789577664264",
+      "title": "Da IA à Comunicação Visual — Preparo do Pão de Queijo",
+      "description": "Projeto de comunicação audiovisual desenvolvido para o Grupo Beija-Flor, explorando a Inteligência Artificial como parte do processo de criação visual. A partir de ambientes e cenas gerados por IA, desenvolvi a composição das peças, narrativa visual, animações e edição, transformando informações técnicas sobre o preparo do produto em um conteúdo dinâmico e didático.",
+      "category": "IA",
+      "serviceId": "ia",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/hONaQRMvr-0",
+      "thumbUrl": "https://img.youtube.com/vi/hONaQRMvr-0/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "hONaQRMvr-0",
+      "createdAt": 1789577664264,
+      "updatedAt": 1789577664264
+    },
+    {
       "id": "proj-1789573880456",
       "title": "Motion Design | Lançamento de Macarrão à Bolonhesa",
       "description": "Projeto de motion design desenvolvido para comunicação interna e promocional do Restaurante Beija-Flor. A direção visual utiliza o produto como elemento central, combinando imagem, tipografia e animação para uma apresentação objetiva e atrativa.",
@@ -327,7 +341,8 @@
     "proj-1789564567697",
     "proj-1789565029559",
     "proj-1789565297112",
-    "proj-1789573880456"
+    "proj-1789573880456",
+    "proj-1789577664264"
   ],
   "hiddenSeeds": [
     "seed-pizza"
@@ -341,5 +356,5 @@
     "Embalagens",
     "Outros"
   ],
-  "updatedAt": "2026-09-16T15:51:21.004Z"
+  "updatedAt": "2026-09-16T16:54:25.154Z"
 }
