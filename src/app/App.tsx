@@ -358,6 +358,18 @@ export function PortfolioApp() {
              preto entre ele e o texto.
              Desktop: mantém a composição clássica original (30%, overlay uniforme). */}
           <style>{`
+            /* Corrige o bug de altura em mobile: min-h-screen (Tailwind) equivale a
+               100vh, que em navegadores com barra de endereço dinâmica (Safari iOS,
+               Chrome Android) é medido incluindo a área coberta pela barra — maior
+               que a tela realmente visível no primeiro paint. Isso fazia o Hero
+               "pular"/redimensionar ao rolar (barra recolhendo) e nascer mais alto
+               que a viewport visível. 100dvh usa a altura visível real; mantemos
+               100vh como fallback via cascata para navegadores sem suporte a dvh. */
+            #hero { min-height: 100vh; min-height: 100dvh; }
+            /* Âncora não-visual, com a mesma altura de UMA tela (100dvh/100vh), usada
+               apenas para posicionar o indicador de scroll (seta) exatamente no fim
+               da primeira dobra — ver nota no botão abaixo. */
+            .hero-scroll-cue-anchor { height: 100vh; height: 100dvh; }
             #hero-video { object-position: 60% top; }
             #hero-overlay { background: none; }
             @media (min-width: 768px) {
@@ -419,7 +431,19 @@ export function PortfolioApp() {
             ))}
           </div>
         </div>
-        <button onClick={() => scrollTo("#servicos")} className="absolute bottom-4 left-1/2 -translate-x-1/2 text-muted-foreground z-10"><ChevronDown size={16} className="animate-bounce" /></button>
+        {/* Indicador de scroll: o Hero usa min-h-screen (altura MÍNIMA), mas o
+           conteúdo real (título + subtítulo + botões + barra de serviços abaixo)
+           frequentemente é mais alto que uma tela — em notebooks, tablets e na
+           maioria dos celulares. Como a seção inteira cresce com o conteúdo, um
+           botão "absolute bottom-4" fica ancorado ao fim de TODO o bloco, não ao
+           fim da primeira tela — sobrepondo/colidindo com a barra de serviços
+           abaixo em vez de funcionar como dica de scroll. Este wrapper isola
+           exatamente a altura de uma tela (mesma correção 100dvh acima), sem
+           participar do fluxo (absolute + pointer-events-none), então não afeta
+           a centralização nem o layout de nenhum outro elemento do Hero. */}
+        <div className="hero-scroll-cue-anchor absolute top-0 left-0 w-full pointer-events-none">
+          <button onClick={() => scrollTo("#servicos")} className="absolute bottom-4 left-1/2 -translate-x-1/2 text-muted-foreground z-10 pointer-events-auto"><ChevronDown size={16} className="animate-bounce" /></button>
+        </div>
       </section>
 
       {/* ── SERVIÇOS ── */}
