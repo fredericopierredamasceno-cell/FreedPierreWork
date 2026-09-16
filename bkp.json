@@ -140,6 +140,20 @@
   ],
   "projects": [
     {
+      "id": "proj-1789573880456",
+      "title": "Motion Design | Lançamento de Macarrão à Bolonhesa",
+      "description": "Projeto de motion design desenvolvido para comunicação interna e promocional do Restaurante Beija-Flor. A direção visual utiliza o produto como elemento central, combinando imagem, tipografia e animação para uma apresentação objetiva e atrativa.",
+      "category": "Motion Design",
+      "serviceId": "motion-design",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/E93OR3usd2E",
+      "thumbUrl": "https://img.youtube.com/vi/E93OR3usd2E/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "E93OR3usd2E",
+      "createdAt": 1789573880456,
+      "updatedAt": 1789573880456
+    },
+    {
       "id": "proj-1789565297112",
       "title": "Motion Design | Teaser “Tem Novidade Saindo do Forno”",
       "description": "Peça desenvolvida para anunciar a chegada de uma nova opção ao cardápio do Beija-Flor, combinando fotografia de produto, tipografia e animação em uma comunicação promocional.",
@@ -312,7 +326,8 @@
     "proj-1786110007524",
     "proj-1789564567697",
     "proj-1789565029559",
-    "proj-1789565297112"
+    "proj-1789565297112",
+    "proj-1789573880456"
   ],
   "hiddenSeeds": [
     "seed-pizza"
@@ -326,5 +341,5 @@
     "Embalagens",
     "Outros"
   ],
-  "updatedAt": "2026-09-16T15:45:59.567Z"
+  "updatedAt": "2026-09-16T15:51:21.004Z"
 }
