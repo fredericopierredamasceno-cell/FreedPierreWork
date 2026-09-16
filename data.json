@@ -140,6 +140,20 @@
   ],
   "projects": [
     {
+      "id": "proj-1789579363868",
+      "title": "30 Anos Beija-Flor — Motion Design",
+      "description": "Projeto de Motion Design desenvolvido para celebrar os 30 anos do Grupo Beija-Flor. A animação apresenta individualmente as marcas do grupo e utiliza transições, efeitos visuais e composição para construir uma sequência que culmina na identidade comemorativa de 30 anos. Um projeto focado em transformar a identidade institucional em uma experiência audiovisual.",
+      "category": "Motion Design",
+      "serviceId": "motion-design",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/lqJ-1yQzThA",
+      "thumbUrl": "https://img.youtube.com/vi/lqJ-1yQzThA/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "lqJ-1yQzThA",
+      "createdAt": 1789579363868,
+      "updatedAt": 1789579363868
+    },
+    {
       "id": "proj-1789578232407",
       "title": "Biscoitos Beija-Flor — Do produto à cena com IA",
       "description": "Uma proposta criativa para apresentar os biscoitos Beija-Flor de uma maneira diferente. A partir de uma referência da cultura pop, aproveitando a trend do Homem Aranha.\nUtilizei Inteligência Artificial como ferramenta para criar e desenvolver as cenas do vídeo, combinando geração visual, composição, direção de arte e edição para construir uma narrativa publicitária voltada às redes sociais.",
@@ -357,7 +371,8 @@
     "proj-1789565297112",
     "proj-1789573880456",
     "proj-1789577664264",
-    "proj-1789578232407"
+    "proj-1789578232407",
+    "proj-1789579363868"
   ],
   "hiddenSeeds": [
     "seed-pizza"
@@ -371,5 +386,5 @@
     "Embalagens",
     "Outros"
   ],
-  "updatedAt": "2026-09-16T17:03:52.953Z"
+  "updatedAt": "2026-09-16T17:22:44.420Z"
 }
