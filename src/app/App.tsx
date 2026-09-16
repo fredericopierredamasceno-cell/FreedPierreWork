@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import type { ReactNode } from "react";
 import {
   Mail, Menu, X, ChevronDown, Film,
   MessageCircle, ArrowUpRight, Plus,
-  Sparkles, Settings, LogOut, Loader2, CheckCircle2,
+  Settings, LogOut, Loader2, CheckCircle2,
   Linkedin, Instagram,
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
@@ -11,7 +10,13 @@ import heroVideo from "../imports/Portf_lio_Video_Final_Ver.mp4";
 import logoImg from "../imports/Logo_Freed_Pierre.png";
 
 import type { CMSData, CMSProject, CMSAudio, CMSRelease, DisplayProject } from "./lib/types";
-import { ALL_SEEDS, SERVICE_ICONS, SERVICE_CATEGORIES, SERVICE_NUMBERS, CATEGORIES, CONTACT_LINKS } from "./lib/defaults";
+import { ALL_SEEDS, CONTACT_LINKS } from "./lib/defaults";
+import {
+  UNASSIGNED_SERVICE_ID, UNASSIGNED_SERVICE_TITLE, DEFAULT_SERVICE_ICON,
+  serviceNumber, projectsOfService, orphanProjects, resolveProjectServiceId, serviceColor,
+} from "./lib/services";
+import { ServiceIcon } from "./lib/serviceIcons";
+import type { DisplayService } from "./lib/services";
 import { checkSession, endSession, renewSession } from "./lib/session";
 
 import { useCMS } from "./hooks/useCMS";
@@ -35,8 +40,10 @@ import { ReleaseFormModal } from "./components/ReleaseFormModal";
 export function PortfolioApp() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [activeService, setActiveService] = useState(0);
-  const [galleryService, setGalleryService] = useState<{ number: string; title: string; icon: ReactNode; galleryCategories: string[] } | null>(null);
+  // Serviço ativo é guardado pelo ID (nunca pelo índice) — reordenar,
+  // ativar ou excluir serviços no Admin não "troca" o serviço aberto.
+  const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
+  const [galleryService, setGalleryService] = useState<DisplayService | null>(null);
   const [galleryInitialItem, setGalleryInitialItem] = useState<DisplayProject | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [releaseFormOpen, setReleaseFormOpen] = useState(false);
@@ -58,19 +65,46 @@ export function PortfolioApp() {
   // continuam visíveis (com indicação "Oculto") para que possam ser geridos
   // direto pela galeria; o público nunca os vê.
   const visibleUploadedProjects = adminMode ? cms.projects : cms.projects.filter(p => !p.hidden);
-  const allProjects: DisplayProject[] = [...visibleSeeds, ...visibleUploadedProjects];
+  const cmsServices = cms.services;
+  // Serviço inativo some do site público — e os projetos dele vão junto,
+  // inclusive os fixados em "Em Destaque". Sem isso um card apareceria no
+  // site sem nenhuma galeria para abrir. Projetos SEM serviço não são
+  // afetados: continuam visíveis em "Outros projetos".
+  const inactiveServiceIds = new Set(cmsServices.filter(s => !s.active).map(s => s.id));
+  const isPubliclyVisible = (p: DisplayProject) => {
+    if (adminMode || inactiveServiceIds.size === 0) return true;
+    const sid = resolveProjectServiceId(p, cmsServices);
+    return !sid || !inactiveServiceIds.has(sid);
+  };
+  const allProjects: DisplayProject[] = [...visibleSeeds, ...visibleUploadedProjects].filter(isPubliclyVisible);
   const featuredProjects = allProjects.filter(p => pinned.has(p.id));
   const ghOk = !!ghConfig?.token;
 
-  // Build service list from CMS data
-  const services = cms.services.map((s, i) => ({
-    number: SERVICE_NUMBERS[i] ?? `0${i + 1}`,
-    icon: SERVICE_ICONS[i] ?? <Sparkles size={24} />,
+  // Lista de serviços = CMS, já normalizado e ordenado em makeCMSData.
+  // Nada aqui depende de índice: número, ícone e projetos saem do próprio
+  // serviço. Serviço inativo continua visível para o admin, para que ele
+  // consiga gerenciar os projetos dele.
+  const visibleServices = adminMode ? cmsServices : cmsServices.filter(s => s.active);
+  const services: DisplayService[] = visibleServices.map((s, i) => ({
+    id: s.id,
+    number: serviceNumber(i),
+    icon: s.icon || DEFAULT_SERVICE_ICON,
     title: s.title,
     description: s.description,
     tags: s.tags,
-    galleryCategories: SERVICE_CATEGORIES[i] ?? [s.title],
+    active: s.active,
+    items: projectsOfService(allProjects, s),
   }));
+
+  // Projetos que ficaram sem serviço (ex: serviço excluído sem realocar).
+  // NUNCA são apagados — continuam acessíveis numa faixa própria.
+  const unassigned = orphanProjects(allProjects, cmsServices);
+  const unassignedService: DisplayService | null = unassigned.length
+    ? { id: UNASSIGNED_SERVICE_ID, number: "--", icon: "box", title: UNASSIGNED_SERVICE_TITLE, description: "", tags: [], active: true, items: unassigned }
+    : null;
+  const galleryServices: DisplayService[] = unassignedService ? [...services, unassignedService] : services;
+
+  const activeSvc = services.find(s => s.id === activeServiceId) ?? services[0] ?? null;
 
   const advantages = cms.advantages.map((a, i) => ({ num: `0${i + 1}`, title: a.title, body: a.body }));
 
@@ -129,7 +163,8 @@ export function PortfolioApp() {
   };
 
   const openProjectGallery = (item: DisplayProject) => {
-    const svc = services.find(s => s.galleryCategories.includes(item.category));
+    const svcId = resolveProjectServiceId(item, cmsServices) ?? UNASSIGNED_SERVICE_ID;
+    const svc = galleryServices.find(s => s.id === svcId);
     if (svc) { setGalleryService(svc); setGalleryInitialItem(item); }
   };
 
@@ -265,8 +300,8 @@ export function PortfolioApp() {
 
       <PublishProgressModal open={publishOpen} steps={publishSteps} onClose={() => setPublishOpen(false)} />
       <AdminLoginModal open={showLogin} onClose={() => setShowLogin(false)} onSuccess={() => { setAdminMode(true); toast.success("Admin autenticado."); addLog("success", "Admin autenticado."); }} />
-      <GalleryModal service={galleryService} allProjects={allProjects} audios={adminMode ? cms.audios : cms.audios.filter(a => !a.hidden)} initialItem={galleryInitialItem} onClose={() => { setGalleryService(null); setGalleryInitialItem(null); }} showAdmin={adminMode} onDelete={handleDeleteProject} onDeleteAudio={handleDeleteAudio} onTogglePin={handleTogglePin} pinned={pinned} designCategories={cms.designCategories} />
-      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSave={handleAddProject} onSaveAudio={handleAddAudio} uploadFile={uploadFile} ghConfigured={ghOk} designCategories={cms.designCategories} />
+      <GalleryModal service={galleryService} audios={adminMode ? cms.audios : cms.audios.filter(a => !a.hidden)} initialItem={galleryInitialItem} onClose={() => { setGalleryService(null); setGalleryInitialItem(null); }} showAdmin={adminMode} onDelete={handleDeleteProject} onDeleteAudio={handleDeleteAudio} onTogglePin={handleTogglePin} pinned={pinned} designCategories={cms.designCategories} />
+      <UploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSave={handleAddProject} onSaveAudio={handleAddAudio} uploadFile={uploadFile} ghConfigured={ghOk} designCategories={cms.designCategories} services={cmsServices} />
       <ReleaseFormModal release={editingRelease} open={releaseFormOpen} onClose={() => { setReleaseFormOpen(false); setEditingRelease(null); }} onSave={handleSaveRelease} onToggleHidden={handleToggleHideRelease} uploadFile={uploadFile} ghConfigured={ghOk} />
       <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} cms={cms} setCms={setCms} publish={publish} uploadFile={uploadFile} deleteFile={deleteFile} syncFromGitHub={syncFromGitHub} ghConfig={ghConfig} setGhConfig={setGhConfig} clearGhConfig={clearGhConfig} saveStatus={saveStatus} saveError={saveError} logs={logs} onOpenUpload={() => { setAdminOpen(false); setUploadOpen(true); }} onOpenReleaseForm={(r) => { setAdminOpen(false); if (r) openEditRelease(r); else openNewRelease(); }} onDeleteRelease={handleDeleteRelease} onToggleHideRelease={handleToggleHideRelease} />
 
@@ -400,21 +435,24 @@ export function PortfolioApp() {
           {/* Desktop grid */}
           <div className="hidden md:grid grid-cols-[220px_1fr] border border-border">
             <div className="border-r border-border">
-              {services.map((s, i) => (
-                <button key={s.number} onClick={() => setActiveService(i)} className={`w-full text-left px-6 py-5 border-b border-border last:border-b-0 transition-all ${activeService === i ? "bg-primary/8" : "hover:bg-muted/40"}`}>
-                  <div className={`font-mono text-[10px] tracking-widest uppercase mb-1 ${activeService === i ? "text-primary" : "text-muted-foreground"}`}>{s.number}</div>
-                  <div className={`text-lg font-black uppercase leading-tight ${activeService === i ? "text-primary" : "text-foreground"}`} style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{s.title}</div>
-                  {activeService === i && <div className="mt-2 h-px w-6 bg-primary" />}
-                </button>
-              ))}
+              {services.map(s => {
+                const isActive = activeSvc?.id === s.id;
+                return (
+                  <button key={s.id} onClick={() => setActiveServiceId(s.id)} className={`w-full text-left px-6 py-5 border-b border-border last:border-b-0 transition-all ${isActive ? "bg-primary/8" : "hover:bg-muted/40"}`}>
+                    <div className={`font-mono text-[10px] tracking-widest uppercase mb-1 ${isActive ? "text-primary" : "text-muted-foreground"}`}>{s.number}{!s.active && " · inativo"}</div>
+                    <div className={`text-lg font-black uppercase leading-tight ${isActive ? "text-primary" : "text-foreground"}`} style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{s.title}</div>
+                    {isActive && <div className="mt-2 h-px w-6 bg-primary" />}
+                  </button>
+                );
+              })}
             </div>
             <div className="p-10">
-              <div className="text-primary mb-5">{services[activeService]?.icon}</div>
-              <h3 className="text-4xl font-black uppercase text-foreground mb-4 leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{services[activeService]?.title}</h3>
-              <p className="text-muted-foreground text-base leading-relaxed font-light mb-8">{services[activeService]?.description}</p>
-              <div className="flex flex-wrap gap-2 mb-8">{services[activeService]?.tags.map(t => <span key={t} className="font-mono text-[10px] tracking-widest uppercase border border-border text-muted-foreground px-3 py-1.5 hover:border-primary hover:text-primary transition-colors">{t}</span>)}</div>
+              <div className="text-primary mb-5">{activeSvc && <ServiceIcon name={activeSvc.icon} size={24} />}</div>
+              <h3 className="text-4xl font-black uppercase text-foreground mb-4 leading-tight" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{activeSvc?.title}</h3>
+              <p className="text-muted-foreground text-base leading-relaxed font-light mb-8">{activeSvc?.description}</p>
+              <div className="flex flex-wrap gap-2 mb-8">{activeSvc?.tags.map(t => <span key={t} className="font-mono text-[10px] tracking-widest uppercase border border-border text-muted-foreground px-3 py-1.5 hover:border-primary hover:text-primary transition-colors">{t}</span>)}</div>
               <div className="flex flex-wrap items-center gap-6">
-                <button onClick={() => { setGalleryService(services[activeService]); setGalleryInitialItem(null); }} className="inline-flex items-center gap-2 bg-primary text-background px-6 py-2.5 font-bold text-xs tracking-widest uppercase hover:bg-primary/85 transition-colors">Ver galeria <Film size={13} /></button>
+                <button onClick={() => { if (activeSvc) { setGalleryService(activeSvc); setGalleryInitialItem(null); } }} className="inline-flex items-center gap-2 bg-primary text-background px-6 py-2.5 font-bold text-xs tracking-widest uppercase hover:bg-primary/85 transition-colors">Ver galeria <Film size={13} /></button>
                 <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-primary font-semibold text-sm tracking-wider uppercase">Solicitar orçamento <ArrowUpRight size={15} /></a>
               </div>
             </div>
@@ -423,14 +461,14 @@ export function PortfolioApp() {
           {/* Mobile accordion */}
           <div className="md:hidden space-y-2">
             {services.map((s, i) => {
-              const open = activeService === i;
+              const open = activeServiceId === null ? i === 0 : activeServiceId === s.id;
               return (
-                <FadeIn key={s.number} delay={i * 40}>
+                <FadeIn key={s.id} delay={i * 40}>
                   <div className="border border-border overflow-hidden">
-                    <button onClick={() => setActiveService(open ? -1 : i)} className={`w-full flex items-center gap-4 px-5 py-4 text-left transition-colors ${open ? "bg-primary/8" : ""}`}>
-                      <span className={`flex-shrink-0 ${open ? "text-primary" : "text-muted-foreground"}`}>{s.icon}</span>
+                    <button onClick={() => setActiveServiceId(open ? "__none__" : s.id)} className={`w-full flex items-center gap-4 px-5 py-4 text-left transition-colors ${open ? "bg-primary/8" : ""}`}>
+                      <span className={`flex-shrink-0 ${open ? "text-primary" : "text-muted-foreground"}`}><ServiceIcon name={s.icon} size={24} /></span>
                       <div className="flex-1 min-w-0">
-                        <div className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase mb-0.5">{s.number}</div>
+                        <div className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase mb-0.5">{s.number}{!s.active && " · inativo"}</div>
                         <div className={`text-xl font-black uppercase leading-tight ${open ? "text-primary" : "text-foreground"}`} style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{s.title}</div>
                       </div>
                       <ChevronDown size={16} className={`text-muted-foreground flex-shrink-0 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
@@ -481,10 +519,9 @@ export function PortfolioApp() {
 
           <FadeIn delay={120}>
             <div className="space-y-2">
-              {CATEGORIES.map(cat => {
-                const catItems = allProjects.filter(p => p.category === cat);
-                return <CarouselRow key={cat} label={cat} items={catItems} showAdmin={adminMode} pinned={pinned} onTogglePin={handleTogglePin} onDelete={handleDeleteProject} onClickItem={openProjectGallery} />;
-              })}
+              {galleryServices.map(s => (
+                <CarouselRow key={s.id} label={s.title} accent={s.id === UNASSIGNED_SERVICE_ID ? undefined : serviceColor(s)} items={s.items} showAdmin={adminMode} pinned={pinned} onTogglePin={handleTogglePin} onDelete={handleDeleteProject} onClickItem={openProjectGallery} />
+              ))}
             </div>
           </FadeIn>
 

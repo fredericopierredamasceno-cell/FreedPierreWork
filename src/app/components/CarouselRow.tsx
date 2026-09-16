@@ -1,13 +1,12 @@
 import type { DisplayProject } from "../lib/types";
-import { CATEGORY_COLORS } from "../lib/defaults";
 import { useCarouselScroll } from "../hooks/useCarouselScroll";
 import { ProjectCard } from "./ProjectCard";
-export function CarouselRow({ label, items, showAdmin, pinned, onTogglePin, onDelete, onClickItem }: {
-  label: string; items: DisplayProject[]; showAdmin: boolean; pinned: Set<string>;
+export function CarouselRow({ label, items, accent: accentProp, showAdmin, pinned, onTogglePin, onDelete, onClickItem }: {
+  label: string; items: DisplayProject[]; accent?: string; showAdmin: boolean; pinned: Set<string>;
   onTogglePin: (id: string) => void; onDelete: (id: string) => void; onClickItem: (item: DisplayProject) => void;
 }) {
   const { scrollRef, canLeft, canRight, updateArrows, scroll, onWheel } = useCarouselScroll(items.length);
-  const accent = CATEGORY_COLORS[label] ?? "var(--primary)";
+  const accent = accentProp ?? "var(--primary)";
   if (items.length === 0) return null;
 
   return (

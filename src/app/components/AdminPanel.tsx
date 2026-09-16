@@ -6,10 +6,10 @@ import {
 } from "lucide-react";
 import type {
   GitHubConfig, CMSData, CMSAudio, CMSProject, CMSRelease, UploadProgress, LogEntry, SaveStatus,
-  CMSServiceContent, CMSAdvantageContent, AdminTab,
+  AdminTab,
 } from "../lib/types";
 import type { SiteContent, SiteTheme } from "../lib/defaults";
-import { ALL_SEEDS, SERVICE_NUMBERS, DESIGN_SERVICE_TITLE } from "../lib/defaults";
+import { ALL_SEEDS } from "../lib/defaults";
 import { releaseLinks } from "../lib/platformIcons";
 import { GitHubConfigTab } from "./GitHubConfigTab";
 import { MediaLibraryTab } from "./MediaLibraryTab";
@@ -18,6 +18,7 @@ import { EditProjectModal } from "./EditProjectModal";
 import { VisibilityToggleButton, VisibilityBadge } from "./edit/VisibilityToggleButton";
 import { LogsTab } from "./LogsTab";
 import { DashboardTab } from "./DashboardTab";
+import { ServicesTab } from "./ServicesTab";
 import { TextField } from "./ui-admin/Field";
 export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, deleteFile, syncFromGitHub, ghConfig, setGhConfig, clearGhConfig, saveStatus, saveError, logs, onOpenUpload, onOpenReleaseForm, onDeleteRelease, onToggleHideRelease }: {
   open: boolean; onClose: () => void; cms: CMSData; setCms: (d: CMSData) => void;
@@ -34,7 +35,6 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
   const [tab, setTab] = useState<AdminTab>("dashboard");
   const [editingAudio, setEditingAudio] = useState<CMSAudio | null>(null);
   const [editingProject, setEditingProject] = useState<CMSProject | null>(null);
-  const [newDesignCat, setNewDesignCat] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -108,32 +108,6 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
 
   const updContent = (k: keyof SiteContent, v: string) => setCms({ ...cms, content: { ...cms.content, [k]: v } });
   const updTheme = (k: keyof SiteTheme, v: string) => setCms({ ...cms, theme: { ...cms.theme, [k]: v } });
-  const updService = (i: number, k: keyof CMSServiceContent, v: string | string[]) => {
-    const updated = cms.services.map((s, idx) => idx === i ? { ...s, [k]: v } : s);
-    setCms({ ...cms, services: updated });
-  };
-  const updAdvantage = (i: number, k: keyof CMSAdvantageContent, v: string) => {
-    const updated = cms.advantages.map((a, idx) => idx === i ? { ...a, [k]: v } : a);
-    setCms({ ...cms, advantages: updated });
-  };
-
-  // Subcategorias do portfólio de Design Gráfico — 100% gerenciadas pelo CMS,
-  // nunca fixas no código. Criar/remover aqui reflete automaticamente no
-  // seletor de upload, na edição de projetos e na navegação da galeria.
-  const addDesignCategory = () => {
-    const name = newDesignCat.trim();
-    if (!name || cms.designCategories.includes(name)) { setNewDesignCat(""); return; }
-    setCms({ ...cms, designCategories: [...cms.designCategories, name] });
-    setNewDesignCat("");
-  };
-  const removeDesignCategory = (name: string) => {
-    if (!confirm(`Remover a categoria "${name}"? Projetos nela ficarão sem subcategoria (não são apagados).`)) return;
-    setCms({
-      ...cms,
-      designCategories: cms.designCategories.filter(c => c !== name),
-      projects: cms.projects.map(p => p.subcategory === name ? { ...p, subcategory: undefined } : p),
-    });
-  };
 
   // Abas agrupadas por área — mesma lista de abas de sempre (nenhum
   // conteúdo mudou), só a ordem e separadores visuais entre grupos.
@@ -287,7 +261,7 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
               </div>
 
               {/* EditProjectModal — edição completa (vídeo, imagem/carrossel, embed) */}
-              <EditProjectModal project={editingProject} open={!!editingProject} onClose={() => setEditingProject(null)} onSave={saveProject} onToggleHidden={toggleHideProject} uploadFile={uploadFile} ghConfigured={!!ghConfig?.token} designCategories={cms.designCategories} />
+              <EditProjectModal project={editingProject} open={!!editingProject} onClose={() => setEditingProject(null)} onSave={saveProject} onToggleHidden={toggleHideProject} uploadFile={uploadFile} ghConfigured={!!ghConfig?.token} designCategories={cms.designCategories} services={cms.services} />
 
               {/* Audio */}
               <div>
@@ -366,47 +340,7 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
             </div>
           )}
 
-          {tab === "servicos" && (
-            <div className="space-y-6">
-              <p className="font-mono text-[10px] text-muted-foreground">Edite os serviços e vantagens. Publique para salvar.</p>
-              {cms.services.map((s, i) => (
-                <div key={i} className="border border-border p-4 space-y-3">
-                  <div className="font-mono text-[10px] text-primary uppercase tracking-widest">Serviço {i + 1} — {SERVICE_NUMBERS[i]}</div>
-                  <TextField label="Título" value={s.title} onChange={v => updService(i, "title", v)} required />
-                  <TextField label="Descrição" value={s.description} onChange={v => updService(i, "description", v)} multiline rows={3} required />
-                  <TextField label="Tags (separadas por vírgula)" value={s.tags.join(", ")} onChange={v => updService(i, "tags", v.split(",").map(t => t.trim()).filter(Boolean))} hint="Ex: Photoshop, Identidade Visual" />
-                </div>
-              ))}
-              <div className="border-t border-border pt-4">
-                <div className="font-mono text-[10px] text-primary uppercase tracking-widest mb-1">Subcategorias — {DESIGN_SERVICE_TITLE}</div>
-                <p className="font-mono text-[9px] text-muted-foreground mb-3">Criadas aqui, sem nada fixo no código. Aparecem no upload, na edição de projetos e na navegação da galeria.</p>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {cms.designCategories.map(c => (
-                    <span key={c} className="flex items-center gap-1.5 font-mono text-[9px] tracking-wider uppercase pl-2.5 pr-1.5 py-1.5 border border-border text-muted-foreground">
-                      {c}
-                      <button onClick={() => removeDesignCategory(c)} title="Remover" className="w-4 h-4 flex items-center justify-center text-red-400 hover:text-red-300"><X size={9} /></button>
-                    </span>
-                  ))}
-                  {cms.designCategories.length === 0 && <span className="font-mono text-[9px] text-muted-foreground/60">Nenhuma subcategoria ainda.</span>}
-                </div>
-                <div className="flex gap-2">
-                  <input value={newDesignCat} onChange={e => setNewDesignCat(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addDesignCategory(); } }} placeholder="Nova subcategoria (ex: Cardápios)" className="flex-1 bg-muted border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary" />
-                  <button onClick={addDesignCategory} className="flex items-center gap-1.5 px-3 py-2 font-bold text-[10px] tracking-widest uppercase bg-primary text-background"><Plus size={11} />Adicionar</button>
-                </div>
-              </div>
-
-              <div className="border-t border-border pt-4">
-                <div className="font-mono text-[10px] text-primary uppercase tracking-widest mb-3">Vantagens — "Por que eu?"</div>
-                {cms.advantages.map((a, i) => (
-                  <div key={i} className="border border-border p-4 space-y-2 mb-2">
-                    <div className="font-mono text-[10px] text-muted-foreground uppercase">Vantagem {i + 1}</div>
-                    <TextField label="Título" value={a.title} onChange={v => updAdvantage(i, "title", v)} required />
-                    <TextField label="Texto" value={a.body} onChange={v => updAdvantage(i, "body", v)} multiline rows={2} required />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {tab === "servicos" && <ServicesTab cms={cms} setCms={setCms} />}
 
           {tab === "cores" && (
             <div className="space-y-3">

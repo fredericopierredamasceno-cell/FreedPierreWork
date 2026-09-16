@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
-import type { ReactNode } from "react";
 import { X, MessageCircle, Pin, PinOff, Trash2, ArrowUpRight } from "lucide-react";
 import type { CMSAudio, DisplayProject } from "../lib/types";
-import { AUDIO_SERVICE_TITLE, DESIGN_SERVICE_TITLE } from "../lib/defaults";
+import { AUDIO_SERVICE_ID, DESIGN_SERVICE_ID } from "../lib/defaults";
+import type { DisplayService } from "../lib/services";
+import { ServiceIcon } from "../lib/serviceIcons";
 import { ImageCarousel } from "./ImageCarousel";
 import { ProjectCard } from "./ProjectCard";
 import { AudioGalleryView } from "./AudioGalleryView";
-export function GalleryModal({ service, allProjects, audios, initialItem, onClose, showAdmin, onDelete, onDeleteAudio, onTogglePin, pinned, designCategories }: {
-  service: { number: string; title: string; icon: ReactNode; galleryCategories: string[] } | null;
-  allProjects: DisplayProject[]; audios: CMSAudio[];
+export function GalleryModal({ service, audios, initialItem, onClose, showAdmin, onDelete, onDeleteAudio, onTogglePin, pinned, designCategories }: {
+  // O serviço já chega com os projetos dele resolvidos (`items`) — a galeria
+  // não filtra mais por nome de categoria.
+  service: DisplayService | null;
+  audios: CMSAudio[];
   initialItem?: DisplayProject | null;
   onClose: () => void; showAdmin: boolean; onDelete: (id: string) => void;
   onDeleteAudio: (id: string) => void;
@@ -28,9 +31,11 @@ export function GalleryModal({ service, allProjects, audios, initialItem, onClos
 
   if (!service) return null;
 
-  const isAudioService = service.galleryCategories.includes(AUDIO_SERVICE_TITLE);
-  const isDesignService = service.galleryCategories.includes(DESIGN_SERVICE_TITLE);
-  const allItemsInService = allProjects.filter(p => service.galleryCategories.includes(p.category));
+  // Comportamentos especiais são ligados a IDs estáveis, nunca a títulos:
+  // renomear o serviço no Admin não muda nada aqui.
+  const isAudioService = service.id === AUDIO_SERVICE_ID;
+  const isDesignService = service.id === DESIGN_SERVICE_ID;
+  const allItemsInService = service.items;
   const items = isDesignService && activeSubcat
     ? allItemsInService.filter(p => (activeSubcat === "__uncategorized__" ? !p.subcategory : p.subcategory === activeSubcat))
     : allItemsInService;
@@ -87,7 +92,7 @@ export function GalleryModal({ service, allProjects, audios, initialItem, onClos
             </div>
           ) : isAudioService ? null : allItemsInService.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 px-6">
-              <div className="w-12 h-12 border border-border flex items-center justify-center text-muted-foreground">{service.icon}</div>
+              <div className="w-12 h-12 border border-border flex items-center justify-center text-muted-foreground"><ServiceIcon name={service.icon} size={20} /></div>
               <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase text-center">Em breve — novos projetos aqui</p>
             </div>
           ) : (

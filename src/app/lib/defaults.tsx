@@ -1,7 +1,8 @@
 /* Site copy defaults, theme defaults, seed content and CMS-record factory */
-import { Palette, Film, Sparkles, Mic, MessageCircle, Mail, Linkedin, Instagram } from "lucide-react";
+import { MessageCircle, Mail, Linkedin, Instagram } from "lucide-react";
 import type { CMSServiceContent, CMSAdvantageContent, CMSData, DisplayProject } from "./types";
 import { normalizeProjects } from "./gallery";
+import { normalizeServices, normalizeProjectsServices } from "./services";
 import pizzaVideo from "../../imports/Lan_amento_Pizza_Ifood.mp4";
 export const CONTENT_DEFAULTS = {
   heroLine1: "ONDE ÁUDIO,",
@@ -35,26 +36,45 @@ export const THEME_DEFAULTS = {
   card: "#0F111A", muted: "#1A1E2B", border: "rgba(237,233,226,0.08)",
 };
 export type SiteTheme = typeof THEME_DEFAULTS;
+/* Serviços padrão — usados só quando o CMS ainda não tem nenhum serviço
+   gravado. A partir daí, a fonte de verdade é sempre o CMS/Admin.
+   Os IDs abaixo são exatamente o slug dos títulos originais, então projetos
+   antigos (que só têm `category`) continuam batendo sem migração alguma. */
 export const DEFAULT_SERVICES: CMSServiceContent[] = [
   {
+    id: "design-grafico",
     title: "Design Gráfico",
     description: "Identidade visual para singles musicais, lançamentos digitais, artes para redes sociais, capas de álbum, materiais institucionais e peças impressas.",
     tags: ["Photoshop", "Illustrator", "Identidade Visual", "Mídias Sociais", "Canva"],
+    icon: "palette", order: 0, active: true,
   },
   {
+    id: "video-making",
     title: "Video Making",
     description: "Vídeos para redes sociais, videoclipes, lyric videos, vídeos institucionais e conteúdo audiovisual. Edição e storytelling visual.",
     tags: ["Premiere Pro", "Edição de Vídeo", "Lyric Video", "Reels", "Institucional"],
+    icon: "film", order: 1, active: true,
   },
   {
+    id: "motion-design",
     title: "Motion Design",
     description: "Animações, vinhetas, motion graphics e edição de vídeo integrada. Cada frame pensado para gerar impacto e engajamento em poucos segundos.",
     tags: ["After Effects", "Motion Graphics", "Animação", "Vinhetas", "Reels"],
+    icon: "sparkles", order: 2, active: true,
   },
   {
+    id: "producao-fonografica",
     title: "Produção Fonográfica",
     description: "Gravação, produção, edição, mixagem e masterização em estúdio. Cadastrado no ECAD. Entrega pronta para streaming.",
     tags: ["FL Studio", "Reaper", "Mixagem", "Masterização", "Streaming", "ECAD"],
+    icon: "mic", order: 3, active: true,
+  },
+  {
+    id: "videos-criados-com-ia",
+    title: "Vídeos criados com IA",
+    description: "Criação de vídeos e conteúdos audiovisuais com inteligência artificial, combinando direção criativa, storytelling, geração de cenas, edição e pós-produção para campanhas, redes sociais e projetos digitais.",
+    tags: ["Inteligência Artificial", "Geração de Vídeo", "Storytelling", "Direção Criativa", "Vídeos para Redes", "Conteúdo Digital"],
+    icon: "bot", order: 4, active: true,
   },
 ];
 
@@ -76,15 +96,24 @@ export function makeCMSData(overrides: Partial<CMSData & { audio?: { name: strin
   if (!audios.length && overrides.audio) {
     audios = [{ id: "migrated-audio", title: (overrides.audio as { name: string; url: string }).name.replace(/\.[^.]+$/, ""), url: (overrides.audio as { name: string; url: string }).url, createdAt: 0 }];
   }
+  // Serviços: normalizados SEMPRE (formato antigo — só title/description/tags —
+  // ganha id/icon/order/active automaticamente, em memória e na próxima gravação).
+  // ATENÇÃO: lista VAZIA é um estado legítimo (o admin pode excluir todos os
+  // serviços) e precisa ser respeitada. Só cai no default quando a chave não
+  // existe no JSON — que é o caso de dados antigos, anteriores a esta etapa.
+  const services = normalizeServices(Array.isArray(overrides.services) ? overrides.services : DEFAULT_SERVICES);
   return {
     content: safeContent,
     theme: { ...THEME_DEFAULTS, ...(overrides.theme ?? {}) },
-    services: overrides.services?.length ? overrides.services : DEFAULT_SERVICES,
+    services,
     advantages: overrides.advantages?.length ? overrides.advantages : DEFAULT_ADVANTAGES,
     // Normaliza SEMPRE — qualquer projeto vindo do GitHub (formato antigo,
     // intermediário ou novo) chega aqui e sai já convertido para `images[]`.
     // Isso é o que garante "nenhuma migração manual necessária".
-    projects: normalizeProjects(overrides.projects ?? []),
+    // ...e o mesmo vale para o vínculo projeto→serviço: `serviceId` é
+    // preenchido a partir de `category` quando ainda não existir, sem
+    // apagar `category` (nada de migração destrutiva).
+    projects: normalizeProjectsServices(normalizeProjects(overrides.projects ?? []), services),
     audios,
     releases: overrides.releases ?? [],
     pinned: overrides.pinned ?? [],
@@ -106,10 +135,11 @@ export const ALL_SEEDS: DisplayProject[] = [
    CONSTANTS
 ═══════════════════════════════════════════════════════════════════ */
 
-export const CATEGORIES = ["Motion Design", "Video Making", "Design Gráfico", "Produção Fonográfica"];
-
-// Nome do serviço cujo portfólio possui subcategorias flexíveis, gerenciadas via CMS.
-export const DESIGN_SERVICE_TITLE = "Design Gráfico";
+// IDs estáveis de serviços com comportamento próprio no site.
+// São IDs (não títulos): renomear "Design Gráfico" no Admin não quebra nada.
+// Não existe lógica especial por NOME de serviço em lugar nenhum.
+export const DESIGN_SERVICE_ID = "design-grafico";
+export const AUDIO_SERVICE_ID = "producao-fonografica";
 
 // Lista inicial (default de código) das subcategorias de Design Gráfico.
 // Serve apenas de ponto de partida — o admin pode criar, renomear e remover
@@ -124,17 +154,6 @@ export const DEFAULT_DESIGN_CATEGORIES = [
   "Outros",
 ];
 
-export const CATEGORY_COLORS: Record<string, string> = {
-  "Motion Design": "#E8863A",
-  "Video Making": "#6C9EE8",
-  "Design Gráfico": "#A278D4",
-  "Produção Fonográfica": "#5BC49A",
-};
-
-export const SERVICE_NUMBERS = ["01", "02", "03", "04"];
-export const SERVICE_ICONS = [<Palette size={24} />, <Film size={24} />, <Sparkles size={24} />, <Mic size={24} />];
-export const SERVICE_CATEGORIES = [["Design Gráfico"], ["Video Making"], ["Motion Design"], ["Produção Fonográfica"]];
-
 export const AUDIO_ACCEPT = "audio/mpeg,audio/wav,audio/ogg,audio/aac,audio/mp4,audio/flac,audio/x-flac,.mp3,.wav,.ogg,.aac,.m4a,.flac";
 
 export const CONTACT_LINKS = [
@@ -144,4 +163,3 @@ export const CONTACT_LINKS = [
   { icon: <Instagram size={18} />, label: "Instagram", value: "@freedpierre", href: "https://www.instagram.com/freedpierre/" },
 ];
 export const AUDIO_GENRES = ["Trap", "Beat", "Gospel", "Eletrônico", "Hip-Hop", "R&B", "Pop", "Funk", "Samba", "Reggaeton", "Lofi", "Instrumental", "Mix", "Outro"];
-export const AUDIO_SERVICE_TITLE = "Produção Fonográfica";

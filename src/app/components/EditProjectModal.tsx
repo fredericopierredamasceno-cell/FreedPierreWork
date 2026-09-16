@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Youtube, AlertCircle, CheckCircle2 } from "lucide-react";
-import type { CMSProject, UploadProgress } from "../lib/types";
-import { CATEGORIES, DESIGN_SERVICE_TITLE } from "../lib/defaults";
+import type { CMSProject, CMSServiceContent, UploadProgress } from "../lib/types";
+import { DESIGN_SERVICE_ID } from "../lib/defaults";
+import { resolveProjectServiceId } from "../lib/services";
 import { parseVideoUrl } from "../lib/video";
 import { draftFromExisting, uploadGalleryItems, type GalleryDraftItem } from "../lib/gallery";
 import { EditModalShell } from "./edit/EditModalShell";
@@ -16,17 +17,20 @@ import { GalleryManager } from "./GalleryManager";
  * design gráfico e futuras categorias compartilhem o mesmo comportamento
  * de gerenciamento sem duplicar UI.
  */
-export function EditProjectModal({ project, open, onClose, onSave, onToggleHidden, uploadFile, ghConfigured, designCategories }: {
+export function EditProjectModal({ project, open, onClose, onSave, onToggleHidden, uploadFile, ghConfigured, designCategories, services }: {
   project: CMSProject | null; open: boolean; onClose: () => void;
   onSave: (updated: CMSProject) => Promise<void>;
   onToggleHidden: (id: string) => void;
   uploadFile: (f: File, t: "image" | "video" | "audio", onProgress: (p: UploadProgress) => void) => Promise<string | null>;
   ghConfigured: boolean;
   designCategories: string[];
+  /** Serviços do CMS. Inclui inativos: um projeto já vinculado a um serviço
+   *  desativado continua editável sem perder o vínculo. */
+  services: CMSServiceContent[];
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<string>(CATEGORIES[0]);
+  const [serviceId, setServiceId] = useState<string>("");
   const [subcategory, setSubcategory] = useState("");
 
   // vídeo
@@ -50,7 +54,8 @@ export function EditProjectModal({ project, open, onClose, onSave, onToggleHidde
     if (project) {
       setTitle(project.title);
       setDescription(project.description);
-      setCategory(project.category);
+      // Projeto antigo (só com `category`) é resolvido para o ID do serviço.
+      setServiceId(resolveProjectServiceId(project, services) ?? "");
       setSubcategory(project.subcategory ?? "");
       const baseImages = project.images && project.images.length
         ? project.images
@@ -88,11 +93,25 @@ export function EditProjectModal({ project, open, onClose, onSave, onToggleHidde
 
   if (!open || !project) return null;
 
+  // Opções: serviços ativos + o serviço atual do projeto (mesmo inativo).
+  const serviceOptions = services.filter(s => s.active || s.id === serviceId);
+  const selectedService = services.find(s => s.id === serviceId) ?? null;
+  const isDesignSelected = selectedService?.id === DESIGN_SERVICE_ID;
+
   const handleSave = async () => {
     if (!title.trim() || busy) return;
     setBusy(true); setGalleryErr("");
 
-    const updated: CMSProject = { ...project, title: title.trim(), description: description.trim(), category, subcategory: category === DESIGN_SERVICE_TITLE && subcategory ? subcategory : undefined };
+    const updated: CMSProject = {
+      ...project,
+      title: title.trim(),
+      description: description.trim(),
+      // `serviceId` é o vínculo real; `category` continua gravado com o nome
+      // atual do serviço só por compatibilidade com dados/código antigos.
+      serviceId: selectedService?.id ?? project.serviceId,
+      category: selectedService?.title ?? project.category,
+      subcategory: isDesignSelected && subcategory ? subcategory : undefined,
+    };
 
     if (project.mediaType === "video") {
       if (mediaFile && ghConfigured) {
@@ -179,15 +198,16 @@ export function EditProjectModal({ project, open, onClose, onSave, onToggleHidde
         <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full bg-muted border border-border px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary resize-none" />
       </div>
       <div>
-        <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1.5">Categoria</label>
+        <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1.5">Serviço</label>
         <div className="grid grid-cols-2 gap-1.5">
-          {CATEGORIES.map(c => (
-            <button key={c} type="button" onClick={() => { setCategory(c); if (c !== DESIGN_SERVICE_TITLE) setSubcategory(""); }} className={`font-mono text-[9px] tracking-widest uppercase px-2 py-2 border text-left transition-colors ${category === c ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{c}</button>
+          {serviceOptions.map(sv => (
+            <button key={sv.id} type="button" onClick={() => { setServiceId(sv.id); if (sv.id !== DESIGN_SERVICE_ID) setSubcategory(""); }} className={`font-mono text-[9px] tracking-widest uppercase px-2 py-2 border text-left transition-colors ${serviceId === sv.id ? "border-primary text-primary" : "border-border text-muted-foreground"}`}>{sv.title}{!sv.active ? " (inativo)" : ""}</button>
           ))}
         </div>
+        {!selectedService && <p className="font-mono text-[9px] text-amber-400 mt-1.5">Este projeto está sem serviço — escolha um acima.</p>}
       </div>
 
-      {category === DESIGN_SERVICE_TITLE && (
+      {isDesignSelected && (
         <div>
           <label className="font-mono text-[10px] text-muted-foreground uppercase block mb-1.5">Subcategoria (opcional)</label>
           <div className="flex flex-wrap gap-1.5">

@@ -1,7 +1,8 @@
 import { LayoutGroup } from "motion/react";
 import { Music } from "lucide-react";
 import type { CMSAudio } from "../lib/types";
-import { CATEGORY_COLORS } from "../lib/defaults";
+import { AUDIO_SERVICE_ID } from "../lib/defaults";
+import { serviceColorById } from "../lib/services";
 import { useCarouselScroll } from "../hooks/useCarouselScroll";
 import { useAudioPlayerState, useSyncPlaylist } from "../contexts/AudioPlayerContext";
 import { FeaturedAudioCard } from "./FeaturedAudioCard";
@@ -36,7 +37,7 @@ export function AudioCarousel({ audios, showAdmin, onDelete }: {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="w-1.5 h-5 flex-shrink-0 rounded-sm" style={{ background: CATEGORY_COLORS["Produção Fonográfica"] }} />
+          <span className="w-1.5 h-5 flex-shrink-0 rounded-sm" style={{ background: serviceColorById(AUDIO_SERVICE_ID) }} />
           <span className="font-black uppercase text-foreground text-lg" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Produções</span>
           <span className="font-mono text-[9px] text-muted-foreground">{audios.length} faixa{audios.length !== 1 ? "s" : ""}</span>
         </div>

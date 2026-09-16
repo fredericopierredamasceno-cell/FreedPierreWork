@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { LayoutGrid, Eye, EyeOff, Music, Clock } from "lucide-react";
 import type { CMSData, DisplayProject } from "../lib/types";
-import { ALL_SEEDS, CATEGORY_COLORS, CATEGORIES } from "../lib/defaults";
+import { ALL_SEEDS } from "../lib/defaults";
+import { projectsOfService, orphanProjects, serviceColor } from "../lib/services";
 
 /* Painel de visão geral do Admin. Não é fonte de verdade de nada — apenas
    lê `cms` (+ seeds do código) e calcula indicadores. Nenhum dado é
@@ -16,11 +17,21 @@ export function DashboardTab({ cms }: { cms: CMSData }) {
   const publishedAudios = cms.audios.filter(a => !a.hidden).length;
   const hiddenAudios = cms.audios.filter(a => a.hidden).length;
 
-  const byCategory = CATEGORIES.map(cat => ({
-    category: cat,
-    total: allProjects.filter(p => p.category === cat).length,
-    published: allProjects.filter(p => p.category === cat && !p.hidden).length,
-  }));
+  // Por serviço — lista e ordem vêm do CMS, não de um array fixo no código.
+  const byService = cms.services.map(s => {
+    const items = projectsOfService(allProjects, s);
+    return {
+      key: s.id,
+      label: s.title + (s.active ? "" : " (inativo)"),
+      color: serviceColor(s),
+      total: items.length,
+      published: items.filter(p => !p.hidden).length,
+    };
+  });
+  const orphans = orphanProjects(allProjects, cms.services);
+  if (orphans.length) {
+    byService.push({ key: "__sem-servico__", label: "Sem serviço", color: "var(--muted-foreground)", total: orphans.length, published: orphans.filter(p => !p.hidden).length });
+  }
 
   // "Adicionado" = createdAt. "Editado" = updatedAt, quando existir e for
   // depois da criação (edição real, não só o registro inicial).
@@ -51,13 +62,13 @@ export function DashboardTab({ cms }: { cms: CMSData }) {
 
       <div>
         <div className="font-mono text-[10px] text-muted-foreground tracking-widest uppercase mb-3 flex items-center gap-2">
-          <LayoutGrid size={11} className="text-primary" />Por categoria
+          <LayoutGrid size={11} className="text-primary" />Por serviço
         </div>
         <div className="border border-border divide-y divide-border">
-          {byCategory.map(c => (
-            <div key={c.category} className="flex items-center gap-3 px-4 py-2.5">
-              <span className="w-2 h-2 flex-shrink-0" style={{ background: CATEGORY_COLORS[c.category] ?? "var(--primary)" }} />
-              <span className="flex-1 text-sm text-foreground font-light">{c.category}</span>
+          {byService.map(c => (
+            <div key={c.key} className="flex items-center gap-3 px-4 py-2.5">
+              <span className="w-2 h-2 flex-shrink-0" style={{ background: c.color }} />
+              <span className="flex-1 text-sm text-foreground font-light">{c.label}</span>
               <span className="font-mono text-[10px] text-muted-foreground">{c.published}/{c.total} publicados</span>
             </div>
           ))}

@@ -23,7 +23,13 @@ export interface GalleryImage {
 }
 
 export interface CMSProject {
-  id: string; title: string; description: string; category: string;
+  id: string; title: string; description: string;
+  /** Nome do serviço (legado). Continua gravado para compatibilidade com
+   *  dados/código antigos — o vínculo real é `serviceId`. */
+  category: string;
+  /** ID estável do serviço ao qual o projeto pertence. Ausente em projetos
+   *  antigos: nesse caso é resolvido a partir de `category` (ver lib/services). */
+  serviceId?: string;
   subcategory?: string; // subcategoria opcional, gerenciada via CMS (ex: dentro de "Design Gráfico")
   mediaType: "image" | "video" | "embed";
   mediaUrl: string; // legado: sempre igual à URL da imagem marcada como principal em `images` (mantido para compatibilidade com código/HTML antigos que ainda leem mediaUrl direto)
@@ -45,8 +51,23 @@ export interface CMSAudio {
   isFeatured?: boolean; // fixado como capa principal da seção "Produções" (apenas uma por vez)
 }
 
+/** Serviço principal do portfólio — criado e editado 100% pelo Admin.
+ *  `id` é estável: renomear o serviço não muda o ID, então nenhum projeto
+ *  perde o vínculo. Nada aqui depende da posição no array. */
 export interface CMSServiceContent {
-  title: string; description: string; tags: string[];
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  /** Apenas a CHAVE do ícone (ex: "palette") — nunca JSX. Ver lib/serviceIcons. */
+  icon: string;
+  /** Ordem de exibição, controlada pelo Admin (não pelo índice do array). */
+  order: number;
+  /** Inativo = some do site público, mas continua no Admin com seus projetos. */
+  active: boolean;
+  /** Nomes antigos pelos quais este serviço já foi chamado — usados para
+   *  reconhecer projetos legados gravados com `category` no nome anterior. */
+  aliases?: string[];
 }
 
 // Lançamento oficial já disponível em plataformas de streaming — seção
