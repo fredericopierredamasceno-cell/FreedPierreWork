@@ -140,6 +140,34 @@
   ],
   "projects": [
     {
+      "id": "proj-1789579949700",
+      "title": "Crachá Empresarial",
+      "description": "Criação e desenvolvimento de arte para crachás. \nO projeto foi desenvolvido seguindo a identidade visual da marca, com foco em organização das informações, legibilidade e padronização dos materiais utilizados pela equipe.",
+      "category": "Design Gráfico",
+      "serviceId": "design-grafico",
+      "subcategory": "Material Impresso",
+      "mediaType": "image",
+      "mediaUrl": "/uploads/images/1789579944242-Crach__Churrascaria_Beija_Flor_.jpg",
+      "images": [
+        {
+          "id": "img-1789579949700-gwjmxp",
+          "url": "/uploads/images/1789579944242-Crach__Churrascaria_Beija_Flor_.jpg",
+          "order": 0,
+          "isMain": true,
+          "uploadedAt": 1789579949700
+        },
+        {
+          "id": "img-1789579949700-6qa2f5",
+          "url": "/uploads/images/1789579947108-Crach__Verso.jpg",
+          "order": 1,
+          "isMain": false,
+          "uploadedAt": 1789579949700
+        }
+      ],
+      "createdAt": 1789579949700,
+      "updatedAt": 1789579949700
+    },
+    {
       "id": "proj-1789579363868",
       "title": "30 Anos Beija-Flor — Motion Design",
       "description": "Projeto de Motion Design desenvolvido para celebrar os 30 anos do Grupo Beija-Flor. A animação apresenta individualmente as marcas do grupo e utiliza transições, efeitos visuais e composição para construir uma sequência que culmina na identidade comemorativa de 30 anos. Um projeto focado em transformar a identidade institucional em uma experiência audiovisual.",
@@ -372,7 +400,8 @@
     "proj-1789573880456",
     "proj-1789577664264",
     "proj-1789578232407",
-    "proj-1789579363868"
+    "proj-1789579363868",
+    "proj-1789579949700"
   ],
   "hiddenSeeds": [
     "seed-pizza"
@@ -386,5 +415,5 @@
     "Embalagens",
     "Outros"
   ],
-  "updatedAt": "2026-09-16T17:22:44.420Z"
+  "updatedAt": "2026-09-16T17:32:30.166Z"
 }
