@@ -103,6 +103,19 @@
   ],
   "projects": [
     {
+      "id": "proj-1789565029559",
+      "title": "Motion Design | Teaser de Lançamento",
+      "description": "Motion desenvolvido como peça de aquecimento para o lançamento das pizzas, criando uma comunicação curta e visualmente marcante para despertar a curiosidade do público.",
+      "category": "Motion Design",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/ybTu5FQbbE8",
+      "thumbUrl": "https://img.youtube.com/vi/ybTu5FQbbE8/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "ybTu5FQbbE8",
+      "createdAt": 1789565029559,
+      "updatedAt": 1789565029559
+    },
+    {
       "id": "proj-1789564567697",
       "title": "Motion Design | Campanha de Lançamento de Pizzas",
       "description": "Peça de publicidade em motion design desenvolvida para promover o lançamento das pizzas do Beija-Flor, com foco em impacto visual, hierarquia de informações e estímulo ao desejo de consumo.",
@@ -239,7 +252,8 @@
     "proj-1786029333026",
     "proj-1786031156532",
     "proj-1786110007524",
-    "proj-1789564567697"
+    "proj-1789564567697",
+    "proj-1789565029559"
   ],
   "hiddenSeeds": [],
   "designCategories": [
@@ -251,5 +265,5 @@
     "Embalagens",
     "Outros"
   ],
-  "updatedAt": "2026-09-16T13:16:08.281Z"
+  "updatedAt": "2026-09-16T13:23:50.118Z"
 }
