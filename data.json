@@ -38,6 +38,7 @@
   },
   "services": [
     {
+      "id": "design-grafico",
       "title": "Design Gráfico",
       "description": "Se as pessoas conseguem reconhecer um projeto antes mesmo de ler o nome, a identidade visual cumpriu o seu papel. É isso que busco construir: marcas e materiais que façam sentido, comuniquem com clareza e permaneçam relevantes com o tempo.",
       "tags": [
@@ -46,9 +47,14 @@
         "Social Media",
         "Materiais Para Impressão",
         "Direção de Arte"
-      ]
+      ],
+      "icon": "palette",
+      "order": 0,
+      "active": true,
+      "aliases": []
     },
     {
+      "id": "video-making",
       "title": "Video Making",
       "description": "Vídeos para redes sociais, videoclipes, lyric videos, vídeos institucionais e conteúdo audiovisual. Edição e storytelling visual.",
       "tags": [
@@ -57,9 +63,14 @@
         "Videoclipes",
         "Conteúdo",
         "Storytelling"
-      ]
+      ],
+      "icon": "camera",
+      "order": 1,
+      "active": true,
+      "aliases": []
     },
     {
+      "id": "motion-design",
       "title": "Motion Design",
       "description": "Assim como a música precisa de ritmo, o design também pode ganhar vida através do movimento. Cada animação nasce para reforçar a mensagem e tornar a experiência mais marcante.",
       "tags": [
@@ -68,9 +79,14 @@
         "Vinhetas",
         "Lettering",
         "Reels"
-      ]
+      ],
+      "icon": "pen-tool",
+      "order": 2,
+      "active": true,
+      "aliases": []
     },
     {
+      "id": "producao-fonografica",
       "title": "Produção Fonográfica",
       "description": "Toda música começa antes da gravação. Produzo cada projeto pensando na identidade sonora, nos detalhes e na emoção que ele precisa transmitir, até a entrega final pronta para lançamento.",
       "tags": [
@@ -80,7 +96,28 @@
         "Masterização",
         "Streaming",
         "ECAD"
-      ]
+      ],
+      "icon": "music",
+      "order": 3,
+      "active": true,
+      "aliases": []
+    },
+    {
+      "id": "ia",
+      "title": "IA",
+      "description": "Ideias podem ir além do que a câmera tradicional consegue capturar. Através da inteligência artificial, crio cenas, narrativas e experiências visuais que transformam conceitos em imagens em movimento, unindo criatividade, tecnologia e direção visual.",
+      "tags": [
+        "Vídeos com IA",
+        "AI Video",
+        "Direção Criativa",
+        "Geração de Imagens",
+        "Animação",
+        "Storytelling"
+      ],
+      "icon": "bot",
+      "order": 4,
+      "active": true,
+      "aliases": []
     }
   ],
   "advantages": [
@@ -113,7 +150,8 @@
       "embedPlatform": "youtube",
       "embedId": "z1MBOvPfaJ4",
       "createdAt": 1789565297112,
-      "updatedAt": 1789565297112
+      "updatedAt": 1789565297112,
+      "serviceId": "motion-design"
     },
     {
       "id": "proj-1789565029559",
@@ -126,7 +164,8 @@
       "embedPlatform": "youtube",
       "embedId": "ybTu5FQbbE8",
       "createdAt": 1789565029559,
-      "updatedAt": 1789565029559
+      "updatedAt": 1789565029559,
+      "serviceId": "motion-design"
     },
     {
       "id": "proj-1789564567697",
@@ -139,7 +178,8 @@
       "embedPlatform": "youtube",
       "embedId": "sCKVChJRaLY",
       "createdAt": 1789564567697,
-      "updatedAt": 1789564567697
+      "updatedAt": 1789564567697,
+      "serviceId": "motion-design"
     },
     {
       "id": "proj-1786110007524",
@@ -159,7 +199,8 @@
         }
       ],
       "subcategory": "Posts para Redes Sociais",
-      "updatedAt": 1789561856873
+      "updatedAt": 1789561856873,
+      "serviceId": "design-grafico"
     },
     {
       "id": "proj-1786031156532",
@@ -169,7 +210,8 @@
       "mediaType": "video",
       "mediaUrl": "/uploads/videos/1786031140297-Capa_Animada_LR.mp4",
       "thumbUrl": "/uploads/images/1786031152875-Capa_Alienado_Oficial.jpg",
-      "createdAt": 1786031156532
+      "createdAt": 1786031156532,
+      "serviceId": "motion-design"
     },
     {
       "id": "proj-1786029333026",
@@ -181,7 +223,8 @@
       "thumbUrl": "https://img.youtube.com/vi/m4bDRGHt28s/hqdefault.jpg",
       "embedPlatform": "youtube",
       "embedId": "m4bDRGHt28s",
-      "createdAt": 1786029333026
+      "createdAt": 1786029333026,
+      "serviceId": "motion-design"
     },
     {
       "id": "proj-1786028755967",
@@ -193,7 +236,8 @@
       "thumbUrl": "https://img.youtube.com/vi/AneW8z3pIck/hqdefault.jpg",
       "embedPlatform": "youtube",
       "embedId": "AneW8z3pIck",
-      "createdAt": 1786028755967
+      "createdAt": 1786028755967,
+      "serviceId": "video-making"
     },
     {
       "id": "proj-1786028389594",
@@ -205,7 +249,8 @@
       "thumbUrl": "https://img.youtube.com/vi/H2AGBsBqW3A/hqdefault.jpg",
       "embedPlatform": "youtube",
       "embedId": "H2AGBsBqW3A",
-      "createdAt": 1786028389594
+      "createdAt": 1786028389594,
+      "serviceId": "motion-design"
     }
   ],
   "audios": [
@@ -279,5 +324,5 @@
     "Embalagens",
     "Outros"
   ],
-  "updatedAt": "2026-09-16T13:33:04.088Z"
+  "updatedAt": "2026-09-16T15:42:44.250Z"
 }
