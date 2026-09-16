@@ -140,6 +140,20 @@
   ],
   "projects": [
     {
+      "id": "proj-1789578232407",
+      "title": "Biscoitos Beija-Flor — Do produto à cena com IA",
+      "description": "Uma proposta criativa para apresentar os biscoitos Beija-Flor de uma maneira diferente. A partir de uma referência da cultura pop, aproveitando a trend do Homem Aranha.\nUtilizei Inteligência Artificial como ferramenta para criar e desenvolver as cenas do vídeo, combinando geração visual, composição, direção de arte e edição para construir uma narrativa publicitária voltada às redes sociais.",
+      "category": "IA",
+      "serviceId": "ia",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/kzQAoymPNCE",
+      "thumbUrl": "https://img.youtube.com/vi/kzQAoymPNCE/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "kzQAoymPNCE",
+      "createdAt": 1789578232407,
+      "updatedAt": 1789578232407
+    },
+    {
       "id": "proj-1789577664264",
       "title": "Da IA à Comunicação Visual — Preparo do Pão de Queijo",
       "description": "Projeto de comunicação audiovisual desenvolvido para o Grupo Beija-Flor, explorando a Inteligência Artificial como parte do processo de criação visual. A partir de ambientes e cenas gerados por IA, desenvolvi a composição das peças, narrativa visual, animações e edição, transformando informações técnicas sobre o preparo do produto em um conteúdo dinâmico e didático.",
@@ -342,7 +356,8 @@
     "proj-1789565029559",
     "proj-1789565297112",
     "proj-1789573880456",
-    "proj-1789577664264"
+    "proj-1789577664264",
+    "proj-1789578232407"
   ],
   "hiddenSeeds": [
     "seed-pizza"
@@ -356,5 +371,5 @@
     "Embalagens",
     "Outros"
   ],
-  "updatedAt": "2026-09-16T16:54:25.154Z"
+  "updatedAt": "2026-09-16T17:03:52.953Z"
 }
