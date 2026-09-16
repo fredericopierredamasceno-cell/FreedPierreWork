@@ -104,7 +104,7 @@
   "projects": [
     {
       "id": "proj-1786110007524",
-      "title": "Teste Ewz",
+      "title": "Carrossel para redes sociais",
       "description": "",
       "category": "Design Gráfico",
       "mediaType": "image",
@@ -116,9 +116,11 @@
           "url": "/uploads/images/1786110002049-Post_para_Instagram_Ewz-01.jpg",
           "order": 0,
           "isMain": true,
-          "uploadedAt": 1786110007524
+          "uploadedAt": 1789561856872
         }
-      ]
+      ],
+      "subcategory": "Posts para Redes Sociais",
+      "updatedAt": 1789561856873
     },
     {
       "id": "proj-1786031156532",
