@@ -40,6 +40,11 @@ import { ReleaseFormModal } from "./components/ReleaseFormModal";
 export function PortfolioApp() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  // Altura real da barra fixa do header (linha do logo/links, sem o dropdown
+  // mobile expansível) — usada só para compensar o scroll até as seções
+  // (ver scrollTo), para o título de cada seção não nascer escondido atrás
+  // do nav fixo.
+  const navBarRef = useRef<HTMLDivElement>(null);
   // Serviço ativo é guardado pelo ID (nunca pelo índice) — reordenar,
   // ativar ou excluir serviços no Admin não "troca" o serviço aberto.
   const [activeServiceId, setActiveServiceId] = useState<string | null>(null);
@@ -153,7 +158,20 @@ export function PortfolioApp() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminMode]);
 
-  const scrollTo = (href: string) => { setMenuOpen(false); document.querySelector(href)?.scrollIntoView({ behavior: "smooth" }); };
+  // Corrige sobreposição do header fixo: scrollIntoView por padrão alinha o
+  // topo da seção exatamente com o topo da viewport, mas como o <nav> é
+  // fixed, ele ficava por cima dos primeiros ~60-90px da seção de destino
+  // (título/label cortado atrás do header) em TODOS os links, desktop e
+  // mobile. Mede a altura real do header (não a área do dropdown mobile,
+  // que varia) e desconta esse valor do scroll.
+  const scrollTo = (href: string) => {
+    setMenuOpen(false);
+    const el = document.querySelector(href) as HTMLElement | null;
+    if (!el) return;
+    const offset = navBarRef.current?.getBoundingClientRect().height ?? 0;
+    const top = el.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
+  };
   const logout = () => {
     endSession();
     clearToken(); // credencial do GitHub não deve sobreviver ao fim da sessão admin
@@ -331,7 +349,7 @@ export function PortfolioApp() {
 
       {/* NAV */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-background/96 backdrop-blur border-b border-border" : ""}`}>
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-3.5 flex items-center justify-between">
+        <div ref={navBarRef} className="max-w-6xl mx-auto px-4 md:px-6 py-3.5 flex items-center justify-between">
           <button onClick={() => scrollTo("#hero")}><img src={logoImg} alt="Freed Pierre" className="h-9 md:h-12 w-auto object-contain brightness-200" /></button>
           <div className="hidden md:flex items-center gap-6">
             {navLinks.map(l => <button key={l.href} onClick={() => scrollTo(l.href)} className="font-medium text-xs tracking-[0.2em] uppercase text-muted-foreground hover:text-foreground transition-colors">{l.label}</button>)}
@@ -344,7 +362,7 @@ export function PortfolioApp() {
         <div className={`md:hidden overflow-hidden transition-[max-height] duration-300 ${menuOpen ? "max-h-80" : "max-h-0"} bg-card border-b border-border`}>
           <div className="px-5 py-5 flex flex-col gap-5">
             {navLinks.map(l => <button key={l.href} onClick={() => scrollTo(l.href)} className="text-left font-medium text-xs tracking-[0.2em] uppercase text-muted-foreground">{l.label}</button>)}
-            <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-primary text-background px-5 py-3 font-bold text-xs tracking-widest uppercase w-fit"><MessageCircle size={13} />Orçamento</a>
+            <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 bg-primary text-background px-5 py-3 font-bold text-xs tracking-widest uppercase w-fit"><MessageCircle size={13} />Orçamento</a>
             {adminMode && <button onClick={() => { setMenuOpen(false); setAdminOpen(true); }} className="flex items-center gap-2 text-primary font-mono text-[10px] tracking-widest uppercase"><Settings size={11} />Admin</button>}
           </div>
         </div>
