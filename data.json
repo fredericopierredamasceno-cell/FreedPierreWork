@@ -103,6 +103,19 @@
   ],
   "projects": [
     {
+      "id": "proj-1789565297112",
+      "title": "Motion Design | Teaser “Tem Novidade Saindo do Forno”",
+      "description": "Peça desenvolvida para anunciar a chegada de uma nova opção ao cardápio do Beija-Flor, combinando fotografia de produto, tipografia e animação em uma comunicação promocional.",
+      "category": "Motion Design",
+      "mediaType": "embed",
+      "mediaUrl": "https://www.youtube.com/embed/z1MBOvPfaJ4",
+      "thumbUrl": "https://img.youtube.com/vi/z1MBOvPfaJ4/hqdefault.jpg",
+      "embedPlatform": "youtube",
+      "embedId": "z1MBOvPfaJ4",
+      "createdAt": 1789565297112,
+      "updatedAt": 1789565297112
+    },
+    {
       "id": "proj-1789565029559",
       "title": "Motion Design | Teaser de Lançamento",
       "description": "Motion desenvolvido como peça de aquecimento para o lançamento das pizzas, criando uma comunicação curta e visualmente marcante para despertar a curiosidade do público.",
@@ -253,7 +266,8 @@
     "proj-1786031156532",
     "proj-1786110007524",
     "proj-1789564567697",
-    "proj-1789565029559"
+    "proj-1789565029559",
+    "proj-1789565297112"
   ],
   "hiddenSeeds": [],
   "designCategories": [
@@ -265,5 +279,5 @@
     "Embalagens",
     "Outros"
   ],
-  "updatedAt": "2026-09-16T13:23:50.118Z"
+  "updatedAt": "2026-09-16T13:28:17.642Z"
 }
