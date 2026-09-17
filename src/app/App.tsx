@@ -39,7 +39,12 @@ import { ReleasesSection } from "./components/ReleasesSection";
 import { ReleaseFormModal } from "./components/ReleaseFormModal";
 export function PortfolioApp() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  // Inicializado a partir do scrollY REAL no primeiro paint (lazy initializer),
+  // em vez de sempre `false`: sem isso, um reload (ou volta de navegação) com a
+  // página já rolada fazia o header nascer transparente — só corrigindo no
+  // próximo evento de scroll, já que o listener abaixo não dispara sozinho no
+  // mount. Também cobre SSR/ambientes sem `window` (fallback seguro para false).
+  const [scrolled, setScrolled] = useState(() => typeof window !== "undefined" && window.scrollY > 50);
   // Altura real da barra fixa do header (linha do logo/links, sem o dropdown
   // mobile expansível) — usada só para compensar o scroll até as seções
   // (ver scrollTo), para o título de cada seção não nascer escondido atrás
@@ -196,8 +201,15 @@ export function PortfolioApp() {
     await publish(updated);
   };
 
+  // BUG CORRIGIDO: excluir projeto/áudio/lançamento apagava o arquivo de
+  // mídia no GitHub e publicava a lista já sem o item, tudo de uma vez, sem
+  // NENHUMA confirmação — um clique errado no ícone de lixeira (em
+  // MediaLibraryTab, ProjectCard, CarouselRow, AudioCarousel ou GalleryModal)
+  // apagava conteúdo publicado sem chance de desfazer. Os três handlers
+  // abaixo agora pedem confirmação explícita antes de prosseguir.
   const handleDeleteProject = async (id: string) => {
     const p = cms.projects.find(p => p.id === id);
+    if (!confirm(`Excluir o projeto "${p?.title ?? "sem título"}"? Essa ação apaga a mídia e não pode ser desfeita.`)) return;
     if (p) {
       const allUrls = [p.mediaUrl, p.thumbUrl, ...(p.images ?? []).map(img => img.url)].filter(Boolean) as string[];
       for (const u of allUrls) { if (u.startsWith("/uploads/")) await deleteFile(u); }
@@ -207,6 +219,7 @@ export function PortfolioApp() {
 
   const handleDeleteAudio = async (id: string) => {
     const a = cms.audios.find(a => a.id === id);
+    if (!confirm(`Excluir a faixa "${a?.title ?? "sem título"}"? Essa ação apaga o áudio e não pode ser desfeita.`)) return;
     if (a) { if (a.url.startsWith("/uploads/")) await deleteFile(a.url); if (a.coverUrl?.startsWith("/uploads/")) await deleteFile(a.coverUrl); }
     await publish({ ...cms, audios: cms.audios.filter(a => a.id !== id) });
   };
@@ -227,6 +240,7 @@ export function PortfolioApp() {
 
   const handleDeleteRelease = async (id: string) => {
     const r = cms.releases.find(r => r.id === id);
+    if (!confirm(`Excluir o lançamento "${r?.title ?? "sem título"}"? Essa ação apaga a capa e não pode ser desfeita.`)) return;
     if (r?.coverUrl?.startsWith("/uploads/")) await deleteFile(r.coverUrl);
     await publish({ ...cms, releases: cms.releases.filter(r => r.id !== id) });
   };
@@ -312,8 +326,16 @@ export function PortfolioApp() {
 
   if (loading) return <LoadingScreen />;
 
+  // overflow-y-visible explícito ao lado de overflow-x-hidden: por spec CSS,
+  // fixar só um eixo de overflow faz o eixo "visible" restante ser resolvido
+  // implicitamente para um valor diferente de "visible" em alguns motores,
+  // transformando este wrapper num scroll container "acidental" — o que em
+  // certas versões de WebKit quebra o containing block de descendentes
+  // position:fixed (como o <nav> abaixo). Deixar os dois eixos explícitos
+  // remove essa ambiguidade, sem nenhum efeito visual (overflow-y já era
+  // visible por padrão).
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden" style={{ fontFamily: "'Barlow', sans-serif" }}>
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden overflow-y-visible" style={{ fontFamily: "'Barlow', sans-serif" }}>
       <Toaster position="top-right" theme="dark" richColors />
 
       <PublishProgressModal open={publishOpen} steps={publishSteps} onClose={() => setPublishOpen(false)} />
@@ -348,7 +370,15 @@ export function PortfolioApp() {
       )}
 
       {/* NAV */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-background/96 backdrop-blur border-b border-border" : ""}`}>
+      {/* Sem fundo nenhum no estado "não rolado", o header ficava 100%
+         transparente sobre o vídeo do Hero — em frames mais claros do vídeo
+         o logo/links praticamente somem, dando a impressão de que o header
+         "não está lá"/está escondido atrás do Hero até o usuário rolar (que
+         é quando `scrolled` liga o fundo sólido). O gradiente abaixo mantém
+         a estética "flutuando sobre o vídeo" pretendida (não é o fundo sólido
+         do estado rolado, só um scrim sutil), mas garante contraste mínimo
+         permanente, desde o primeiro frame, sem depender de scroll. */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? "bg-background/96 backdrop-blur border-b border-border" : "bg-gradient-to-b from-background/55 via-background/20 to-transparent"}`}>
         <div ref={navBarRef} className="max-w-6xl mx-auto px-4 md:px-6 py-3.5 flex items-center justify-between">
           <button onClick={() => scrollTo("#hero")}><img src={logoImg} alt="Freed Pierre" className="h-9 md:h-12 w-auto object-contain brightness-200" /></button>
           <div className="hidden md:flex items-center gap-6">
@@ -357,9 +387,9 @@ export function PortfolioApp() {
               ? <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-primary text-background px-5 py-2.5 font-bold text-xs tracking-widest uppercase hover:bg-primary/85 transition-colors"><MessageCircle size={13} />Orçamento</a>
               : <button onClick={() => setAdminOpen(true)} className="font-mono text-[10px] text-primary border border-primary/30 px-3 py-1.5 flex items-center gap-1.5 hover:bg-primary/10 transition-colors"><Settings size={11} />Admin</button>}
           </div>
-          <button className="md:hidden text-foreground p-1" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={22} /> : <Menu size={22} />}</button>
+          <button className="md:hidden text-foreground p-1" onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? "Fechar menu" : "Abrir menu"} aria-expanded={menuOpen} aria-controls="mobile-menu">{menuOpen ? <X size={22} /> : <Menu size={22} />}</button>
         </div>
-        <div className={`md:hidden overflow-hidden transition-[max-height] duration-300 ${menuOpen ? "max-h-80" : "max-h-0"} bg-card border-b border-border`}>
+        <div id="mobile-menu" className={`md:hidden overflow-hidden transition-[max-height] duration-300 ${menuOpen ? "max-h-80" : "max-h-0"} bg-card border-b border-border`}>
           <div className="px-5 py-5 flex flex-col gap-5">
             {navLinks.map(l => <button key={l.href} onClick={() => scrollTo(l.href)} className="text-left font-medium text-xs tracking-[0.2em] uppercase text-muted-foreground">{l.label}</button>)}
             <a href="https://wa.me/5531975791151" target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 bg-primary text-background px-5 py-3 font-bold text-xs tracking-widest uppercase w-fit"><MessageCircle size={13} />Orçamento</a>

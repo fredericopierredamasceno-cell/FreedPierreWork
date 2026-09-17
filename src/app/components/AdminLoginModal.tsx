@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { Lock, Eye, EyeOff } from "lucide-react";
 import { ADMIN_USER, ADMIN_PASS, MAX_LOGIN_ATTEMPTS, LOGIN_LOCK_MS, startSession, getLoginFailState, setLoginFailState, clearLoginFailState } from "../lib/session";
+import { lockBodyScroll } from "../lib/scrollLock";
 export function AdminLoginModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
   const [user, setUser] = useState(""); const [pass, setPass] = useState(""); const [showPass, setShowPass] = useState(false); const [err, setErr] = useState("");
   useEffect(() => { if (!open) { setUser(""); setPass(""); setErr(""); } }, [open]);
+  // Trava o scroll do fundo enquanto o login está aberto (ver lib/scrollLock.ts).
+  useEffect(() => { if (!open) return; return lockBodyScroll(); }, [open]);
   const submit = () => {
     const failState = getLoginFailState();
     if (failState.lockUntil > Date.now()) {

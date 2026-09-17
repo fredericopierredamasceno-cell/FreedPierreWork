@@ -1,8 +1,13 @@
+import { useEffect } from "react";
 import { X, CheckCircle2, Loader2, XCircle, Clock } from "lucide-react";
 import type { PublishStep } from "../lib/types";
+import { lockBodyScroll } from "../lib/scrollLock";
 export function PublishProgressModal({ open, steps, onClose }: { open: boolean; steps: PublishStep[]; onClose: () => void }) {
   const allDone = steps.length > 0 && steps.every(s => s.status === "done");
   const hasError = steps.some(s => s.status === "error");
+  // Trava o scroll do fundo (contagem de referências — ver lib/scrollLock.ts;
+  // convive bem com o AdminPanel, que costuma estar aberto por trás deste modal).
+  useEffect(() => { if (!open) return; return lockBodyScroll(); }, [open]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">

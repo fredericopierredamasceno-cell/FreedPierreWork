@@ -4,6 +4,7 @@ import type { CMSAudio, DisplayProject } from "../lib/types";
 import { AUDIO_SERVICE_ID, DESIGN_SERVICE_ID } from "../lib/defaults";
 import type { DisplayService } from "../lib/services";
 import { ServiceIcon } from "../lib/serviceIcons";
+import { lockBodyScroll } from "../lib/scrollLock";
 import { ImageCarousel } from "./ImageCarousel";
 import { ProjectCard } from "./ProjectCard";
 import { AudioGalleryView } from "./AudioGalleryView";
@@ -25,8 +26,10 @@ export function GalleryModal({ service, audios, initialItem, onClose, showAdmin,
   useEffect(() => {
     if (!service) return;
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") { if (selected) setSelected(null); else onClose(); } };
-    document.addEventListener("keydown", fn); document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", fn); document.body.style.overflow = ""; };
+    document.addEventListener("keydown", fn);
+    // Trava com contagem de referências — ver comentário em lib/scrollLock.ts.
+    const unlock = lockBodyScroll();
+    return () => { document.removeEventListener("keydown", fn); unlock(); };
   }, [service, selected, onClose]);
 
   if (!service) return null;

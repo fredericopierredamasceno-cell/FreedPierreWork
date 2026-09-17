@@ -7,6 +7,7 @@ import type { CMSProject, CMSAudio, CMSServiceContent, UploadProgress } from "..
 import { AUDIO_ACCEPT, AUDIO_GENRES, DESIGN_SERVICE_ID } from "../lib/defaults";
 import { activeServices } from "../lib/services";
 import { MAX_FILE_BYTES } from "../lib/github";
+import { lockBodyScroll } from "../lib/scrollLock";
 import { MAX_VIDEO_DIMENSION, parseVideoUrl, probeVideoDimensions } from "../lib/video";
 import { uploadGalleryItems, type GalleryDraftItem } from "../lib/gallery";
 import { UploadProgressBar } from "./UploadProgressBar";
@@ -58,8 +59,13 @@ export function UploadModal({ open, onClose, onSave, onSaveAudio, uploadFile, gh
 
   useEffect(() => {
     if (!open) { reset(); return; }
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    // Trava com contagem de referências — ver comentário em lib/scrollLock.ts.
+    // BUG CORRIGIDO: abrir este modal a partir do AdminPanel (onOpenUpload
+    // fecha o painel e abre este modal no mesmo clique) podia deixar o
+    // scroll do fundo destravado, porque cada modal mexia sozinho em
+    // `document.body.style.overflow`, sem coordenação entre eles.
+    const unlock = lockBodyScroll();
+    return () => { unlock(); };
   }, [open, reset]);
 
   // Pré-seleciona o primeiro serviço disponível (e se o serviço escolhido

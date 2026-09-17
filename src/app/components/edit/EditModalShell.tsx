@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { X, Check, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { lockBodyScroll } from "../../lib/scrollLock";
 
 /**
  * Casca genérica de modal de edição.
@@ -16,6 +18,13 @@ export function EditModalShell({
   children: ReactNode;
   extraHeaderAction?: ReactNode;
 }) {
+  // Trava o scroll do fundo enquanto este modal estiver montado — usado por
+  // EditProjectModal, EditAudioModal e ReleaseFormModal. Sem isso, a página
+  // por trás continuava rolando enquanto o formulário de edição estava
+  // aberto por cima. Contagem de referências (ver lib/scrollLock.ts) evita
+  // conflito com AdminPanel/GalleryModal/UploadModal abertos ao mesmo tempo.
+  useEffect(() => lockBodyScroll(), []);
+
   return (
     <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-background/92 backdrop-blur-sm" onClick={() => !busy && onClose()} />

@@ -10,6 +10,7 @@ import type {
 } from "../lib/types";
 import type { SiteContent, SiteTheme } from "../lib/defaults";
 import { ALL_SEEDS } from "../lib/defaults";
+import { lockBodyScroll } from "../lib/scrollLock";
 import { releaseLinks } from "../lib/platformIcons";
 import { GitHubConfigTab } from "./GitHubConfigTab";
 import { MediaLibraryTab } from "./MediaLibraryTab";
@@ -38,10 +39,13 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
 
   useEffect(() => {
     if (!open) return;
-    document.body.style.overflow = "hidden";
+    // Trava com contagem de referências — ver comentário em lib/scrollLock.ts.
+    // Sem isso, abrir outro modal (ex: Upload) a partir daqui, no mesmo
+    // clique que fecha este painel, podia deixar o scroll do fundo destravado.
+    const unlock = lockBodyScroll();
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", fn);
-    return () => { document.removeEventListener("keydown", fn); document.body.style.overflow = ""; };
+    return () => { document.removeEventListener("keydown", fn); unlock(); };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -55,6 +59,15 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
     ? setCms({ ...cms, hiddenSeeds: cms.hiddenSeeds.filter(s => s !== id) })
     : setCms({ ...cms, hiddenSeeds: [...cms.hiddenSeeds, id], pinned: cms.pinned.filter(p => p !== id) });
 
+  // BUG CORRIGIDO — inconsistência grave de integridade de dados: este
+  // handler já apagava o ARQUIVO de mídia no GitHub imediatamente
+  // (`deleteFile`, irreversível), mas só atualizava o estado LOCAL do CMS
+  // (`setCms`) em vez de publicar (`publish`). Se o admin fechasse o painel
+  // sem clicar em "Publicar" depois, o `data.json` publicado continuava
+  // referenciando um projeto cujo arquivo já não existia mais no
+  // repositório — link quebrado (404) no site ao vivo. Agora publica
+  // imediatamente, na mesma hora em que o arquivo é apagado, mantendo os
+  // dois em sincronia.
   const delUpload = async (id: string) => {
     if (!confirm("Remover projeto?")) return;
     const p = cms.projects.find(p => p.id === id);
@@ -62,14 +75,14 @@ export function AdminPanel({ open, onClose, cms, setCms, publish, uploadFile, de
       const allUrls = [p.mediaUrl, p.thumbUrl, ...(p.images ?? []).map(img => img.url)].filter(Boolean) as string[];
       for (const u of allUrls) { if (u.startsWith("/uploads/")) await deleteFile(u); }
     }
-    setCms({ ...cms, projects: cms.projects.filter(p => p.id !== id), pinned: cms.pinned.filter(p => p !== id) });
+    await publish({ ...cms, projects: cms.projects.filter(p => p.id !== id), pinned: cms.pinned.filter(p => p !== id) });
   };
 
   const delAudio = async (id: string) => {
     if (!confirm("Remover áudio permanentemente?")) return;
     const a = cms.audios.find(a => a.id === id);
     if (a) { if (a.url.startsWith("/uploads/")) await deleteFile(a.url); if (a.coverUrl?.startsWith("/uploads/")) await deleteFile(a.coverUrl); }
-    setCms({ ...cms, audios: cms.audios.filter(a => a.id !== id) });
+    await publish({ ...cms, audios: cms.audios.filter(a => a.id !== id) });
   };
 
   const toggleHideAudio = (id: string) => {
