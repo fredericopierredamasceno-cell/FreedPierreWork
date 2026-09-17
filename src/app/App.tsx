@@ -399,7 +399,20 @@ export function PortfolioApp() {
       </nav>
 
       {/* ── HERO ── */}
-      <section id="hero" className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+      {/* padding-top no CONTAINER flex (não no item interno) é a correção
+         deste bug: a seção usa `justify-center` para centralizar o conteúdo
+         verticalmente, e um padding-top no próprio container RESERVA espaço
+         garantido no topo antes de qualquer centralização acontecer — o
+         conteúdo centralizado nunca pode invadir essa faixa, seja qual for a
+         altura do viewport ou do conteúdo. `pt-20` (mobile) / `md:pt-28`
+         (desktop) cobre com folga a altura real do header fixo (~64px no
+         mobile, ~80px no desktop, com respiro extra). Isso não afeta o
+         vídeo/overlay de fundo: eles são `absolute inset-0`, e a caixa de
+         referência de um elemento absoluto é a "padding box" do ancestral
+         posicionado — ou seja, o padding fica DENTRO dela e não desloca
+         onde `inset-0` começa. O vídeo continua full-bleed, atrás do menu,
+         exatamente como antes. */}
+      <section id="hero" className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-20 md:pt-28">
         <div className="absolute inset-0">
           {/* Mobile: vídeo alinhado 60% à esquerda (sujeito mais centralizado/à esquerda no quadro),
              sem overlay escuro atrás do título — o vídeo fica como protagonista, sem gradiente
@@ -451,7 +464,7 @@ export function PortfolioApp() {
         </div>
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundSize: "200px" }} />
 
-        <div className="relative z-10 w-full max-w-6xl mx-auto px-5 md:px-8 text-left pt-20 md:pt-0">
+        <div className="relative z-10 w-full max-w-6xl mx-auto px-5 md:px-8 text-left">
           <h1 className="font-black uppercase leading-[0.88] mb-5 md:mb-8 text-left" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
             <span className="hero-title-line block text-foreground">{content.heroLine1}</span>
             <span className="hero-title-line block text-primary">{content.heroLine2}</span>
